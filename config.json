@@ -1,0 +1,45 @@
+{
+  "world": {
+    "minX": -648.0,
+    "maxX": 648.0,
+    "minZ": -648.0,
+    "maxZ": 648.0
+  },
+  "gridSize": 96,
+  "sampleHz": 5,
+  "skipFirstSeconds": 5,
+  "mapImage": "map.png",
+  "outputImage": "heatmap.png",
+  "crashOutputImage": "crashmap.png",
+  "treeOutputImage": "treemap.png",
+  "treeDotRadius": 3,
+  "sourceMap": "../CustomMap/Bombs-CatsForest.txt",
+  "persistentDataFile": "../PersistentData/bombs_heatmap.txt",
+  "blurSigma": 1.5,
+  "pathDotRadius": 2.5,
+  "startMarkerRadius": 6,
+  "pathLineWidth": 2,
+  "pathLineAlpha": 200,
+  "pathDirectionEvery": 10,
+  "pathArrowLength": 8,
+  "crashMarkerRadius": 8,
+  "crashMarkerSpread": 10,
+  "gamma": 0.7,
+  "minDensity": 0.06,
+  "showLegend": true,
+  "showPathLines": true,
+  "showPathArrows": true,
+  "showPathDots": false,
+  "showLandmarks": false,
+  "flipZ": true,
+  "landmarks": {
+    "supply": [-53, -511],
+    "spawnCenter": [0, -240]
+  },
+  "imageWorld": {
+    "minX": -630.0,
+    "maxX": 616.0,
+    "minZ": -642.0,
+    "maxZ": 644.0
+  }
+}
