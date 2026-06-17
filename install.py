@@ -6,7 +6,9 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+from paths import app_root
+
+ROOT = app_root()
 PACK = ROOT / "pack"
 
 LOGIC_NAME = "Bombs-CrashmapLogic.cl"

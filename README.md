@@ -16,4 +16,13 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Updates: `git pull` then **File → Install to AoTTG2** if pack files changed.
+Updates: `git pull` then **File -> Install to AoTTG2** if pack files changed.
+
+## Build release
+
+```bash
+./build.sh          # Linux
+build.bat           # Windows
+```
+
+Output: `dist/Bombs-Crashmap-linux.zip` or `dist/Bombs-Crashmap-windows.zip`

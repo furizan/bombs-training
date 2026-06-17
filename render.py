@@ -10,7 +10,9 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter
 
-ROOT = Path(__file__).resolve().parent
+from paths import app_root
+
+ROOT = app_root()
 HERE = ROOT  # paths in this package are relative to repo root
 
 
