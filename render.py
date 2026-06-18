@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render density heatmap and crash map from Bombs-Crashmap PersistentData export."""
+"""Render density heatmap and crash map from Bombs-Training PersistentData export."""
 
 from __future__ import annotations
 

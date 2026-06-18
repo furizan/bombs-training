@@ -11,7 +11,7 @@ build/
 dist/
 *.zip
 
-# PyInstaller (bombs-crashmap.spec is tracked)
+# PyInstaller (bombs-training.spec is tracked)
 
 # IDE
 .idea/

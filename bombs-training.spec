@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name="Bombs-Crashmap",
+    name="Bombs-Training",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

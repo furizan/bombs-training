@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bombs-Crashmap viewer — Qt app for all platforms."""
+"""Bombs-Training viewer — Qt app for all platforms."""
 
 from __future__ import annotations
 
@@ -104,7 +104,7 @@ class MapLabel(QLabel):
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("Bombs-Crashmap")
+        self.setWindowTitle("Bombs-Training")
         self.resize(960, 720)
 
         self._config_path = CONFIG_PATH
@@ -155,7 +155,7 @@ class MainWindow(QMainWindow):
             return
         answer = QMessageBox.question(
             self,
-            "Install Bombs-Crashmap",
+            "Install Bombs-Training",
             "Install custom logic and map into your AoTTG2 folder?\n"
             f"(Only adds {MAP_NAME.removesuffix('.txt')} files.)",
         )
@@ -184,7 +184,7 @@ class MainWindow(QMainWindow):
             answer = QMessageBox.question(
                 self,
                 "Replace files?",
-                "Bombs-Crashmap is already installed. Replace existing files?",
+                "Bombs-Training is already installed. Replace existing files?",
             )
             replace = answer == QMessageBox.StandardButton.Yes
         self._install_to(root, replace=replace)
@@ -228,7 +228,7 @@ class MainWindow(QMainWindow):
 
     def _show_current(self) -> None:
         path = self._paths[self._view]
-        self.setWindowTitle(f"Bombs-Crashmap — {path.name}")
+        self.setWindowTitle(f"Bombs-Training — {path.name}")
         if not path.is_file():
             self._map.set_source(None, placeholder=f"Waiting for {path.name}…\nFinish a run.")
             return

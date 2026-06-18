@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install Bombs-Crashmap custom logic and map into an AoTTG2 data folder."""
+"""Install Bombs-Training custom logic and map into an AoTTG2 data folder."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from paths import app_root
 ROOT = app_root()
 PACK = ROOT / "pack"
 
-LOGIC_NAME = "Bombs-CrashmapLogic.cl"
+LOGIC_NAME = "Bombs-TrainingLogic.cl"
 MAP_NAME = "Bombs-CatsForest.txt"
 
 
