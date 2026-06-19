@@ -4,7 +4,7 @@
 
 Download the release, unzip into your AoTTG2 folder, run `Bombs-Training` (or `Bombs-Training.exe` on Windows).
 
-**File -> Install to AoTTG2** -> in-game load **BombsTrainingMap**.
+**File -> Install to AoTTG2** -> in-game load custom map **BombsTrainingMap**, game mode **BombsTrainingLogic**.
 
 ## Developers
 

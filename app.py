@@ -197,8 +197,8 @@ class MainWindow(QMainWindow):
                 self,
                 "Installed",
                 detail
-                + "\n\nIn-game:\n"
-                f"1. Load custom map {MAP_NAME.removesuffix('.txt')}",
+                + "\n\nIn-game: load custom map "
+                f"{MAP_NAME.removesuffix('.txt')}, game mode {LOGIC_NAME.removesuffix('.cl')}.",
             )
         else:
             QMessageBox.warning(self, "Install", detail)
