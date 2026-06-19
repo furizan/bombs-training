@@ -707,15 +707,19 @@ def draw_path_samples(
     pixels: list[tuple[float, float]],
     color: tuple[int, int, int, int],
     radius: float,
+    *,
+    dot_alpha: int = 255,
 ) -> None:
     """One dot per recorded sample (5 Hz positions), not interpolated lines."""
     if not pixels:
         return
 
+    fill = with_alpha(color, dot_alpha)
+    outline_alpha = min(120, dot_alpha)
+    outline = (255, 255, 255, outline_alpha)
     r = radius
-    outline = (255, 255, 255, 120)
     for x, y in pixels:
-        draw.ellipse([x - r, y - r, x + r, y + r], fill=color, outline=outline, width=1)
+        draw.ellipse([x - r, y - r, x + r, y + r], fill=fill, outline=outline, width=1)
 
 
 def contrast_text_for_fill(fill: tuple[int, int, int, int]) -> tuple[tuple[int, int, int, int], tuple[int, int, int, int]]:
@@ -809,9 +813,11 @@ def draw_path_legend_sample(
     color = crash_color(1)
     line_width = int(config.get("pathLineWidth", 2))
     line_alpha = int(config.get("pathLineAlpha", 100))
+    arrow_alpha = int(config.get("pathArrowAlpha", 255))
+    dot_alpha = int(config.get("pathDotAlpha", 255))
     dot_radius = float(config.get("pathDotRadius", 2.5))
     arrow_len = float(config.get("pathArrowLength", 7))
-    outline = (255, 255, 255, 120)
+    outline = (255, 255, 255, min(120, dot_alpha))
 
     seg_len = 18.0
     x0 = x
@@ -826,18 +832,20 @@ def draw_path_legend_sample(
         tip_x = cursor if show_lines else x1
         wing = arrow_len * 0.55
         back_x = tip_x - arrow_len
-        draw.line([(tip_x, y), (back_x, y - wing)], fill=color, width=line_width)
-        draw.line([(tip_x, y), (back_x, y + wing)], fill=color, width=line_width)
+        arrow_color = with_alpha(color, arrow_alpha)
+        draw.line([(tip_x, y), (back_x, y - wing)], fill=arrow_color, width=line_width)
+        draw.line([(tip_x, y), (back_x, y + wing)], fill=arrow_color, width=line_width)
         cursor = max(cursor, tip_x)
 
     if show_dots:
         dot_start = cursor + (4 if cursor > x0 else 0)
         gap = dot_radius * 2 + 3
+        dot_fill = with_alpha(color, dot_alpha)
         for i in range(2):
             cx = dot_start + i * gap
             draw.ellipse(
                 [cx - dot_radius, y - dot_radius, cx + dot_radius, y + dot_radius],
-                fill=color,
+                fill=dot_fill,
                 outline=outline,
                 width=1,
             )
@@ -961,6 +969,8 @@ def render_crashmap(config: dict, export: dict, map_path: Path, out_path: Path) 
     sample_radius = float(config.get("pathDotRadius", 2.5))
     line_width = int(config.get("pathLineWidth", 2))
     line_alpha = int(config.get("pathLineAlpha", 100))
+    arrow_alpha = int(config.get("pathArrowAlpha", 255))
+    dot_alpha = int(config.get("pathDotAlpha", 255))
     direction_every = int(config.get("pathDirectionEvery", 10))
     arrow_len = float(config.get("pathArrowLength", 7))
 
@@ -985,13 +995,18 @@ def render_crashmap(config: dict, export: dict, map_path: Path, out_path: Path) 
         for segment, color_index, _duration in segments:
             color = crash_color(color_index if color_index else 1)
             draw_path_arrows(
-                draw, segment, color, line_width, direction_every, arrow_len
+                draw,
+                segment,
+                with_alpha(color, arrow_alpha),
+                line_width,
+                direction_every,
+                arrow_len,
             )
 
     if config.get("showPathDots", True):
         for segment, color_index, _duration in segments:
             color = crash_color(color_index if color_index else 1)
-            draw_path_samples(draw, segment, color, sample_radius)
+            draw_path_samples(draw, segment, color, sample_radius, dot_alpha=dot_alpha)
 
     if pixels:
         sx, sy = pixels[0]

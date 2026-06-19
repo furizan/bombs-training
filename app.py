@@ -57,6 +57,8 @@ FLOAT_SETTINGS = (
 
 INT_SETTINGS = (
     ("pathLineAlpha", "Path line alpha", 0, 255, 1),
+    ("pathArrowAlpha", "Path arrow alpha", 0, 255, 1),
+    ("pathDotAlpha", "Path dot alpha", 0, 255, 1),
     ("crashMarkerAlpha", "Crash marker alpha", 0, 255, 1),
     ("pathDirectionEvery", "Arrow every N points", 1, 50, 1),
 )
@@ -69,7 +71,9 @@ CRASH_MAP_SLIDER_ORDER = (
     "pathLineWidth",
     "pathLineAlpha",
     "pathDotRadius",
+    "pathDotAlpha",
     "pathArrowLength",
+    "pathArrowAlpha",
     "pathDirectionEvery",
     "crashMarkerRadius",
     "crashMarkerAlpha",

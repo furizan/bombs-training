@@ -7,6 +7,8 @@
   "pathLineWidth": 2,
   "pathArrowLength": 8,
   "pathLineAlpha": 200,
+  "pathArrowAlpha": 255,
+  "pathDotAlpha": 255,
   "pathDirectionEvery": 10,
   "crashMarkerRadius": 8,
   "crashMarkerAlpha": 180,
