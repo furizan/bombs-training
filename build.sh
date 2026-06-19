@@ -19,7 +19,7 @@ pyinstaller --noconfirm --clean bombs-training.spec
 mkdir -p "$RELEASE"
 mv dist/Bombs-Training "$RELEASE/"
 chmod +x "$RELEASE/Bombs-Training"
-cp config.json map.png "$RELEASE/"
+cp config.json display_defaults.json map.png "$RELEASE/"
 cp USER-README.md "$RELEASE/README.md"
 cp -r pack "$RELEASE/"
 

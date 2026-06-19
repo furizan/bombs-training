@@ -18,12 +18,12 @@
   "blurSigma": 1.5,
   "pathDotRadius": 2.5,
   "startMarkerRadius": 6,
-  "pathLineWidth": 2,
+  "pathLineWidth": 2.0,
   "pathLineAlpha": 200,
   "pathDirectionEvery": 10,
-  "pathArrowLength": 8,
-  "crashMarkerRadius": 8,
-  "crashMarkerSpread": 10,
+  "pathArrowLength": 8.0,
+  "crashMarkerRadius": 8.0,
+  "crashMarkerSpread": 10.0,
   "gamma": 0.7,
   "minDensity": 0.06,
   "showLegend": true,
@@ -33,8 +33,14 @@
   "showLandmarks": false,
   "flipZ": true,
   "landmarks": {
-    "supply": [-53, -511],
-    "spawnCenter": [0, -240]
+    "supply": [
+      -53,
+      -511
+    ],
+    "spawnCenter": [
+      0,
+      -240
+    ]
   },
   "imageWorld": {
     "minX": -630.0,

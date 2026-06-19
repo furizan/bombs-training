@@ -22,6 +22,7 @@ if errorlevel 1 exit /b 1
 mkdir "%RELEASE%"
 move /y dist\Bombs-Training.exe "%RELEASE%\"
 copy /y config.json "%RELEASE%\"
+copy /y display_defaults.json "%RELEASE%\"
 copy /y map.png "%RELEASE%\"
 copy /y USER-README.md "%RELEASE%\README.md"
 xcopy /e /i /y pack "%RELEASE%\pack"

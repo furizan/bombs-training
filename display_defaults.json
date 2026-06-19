@@ -1,0 +1,16 @@
+{
+  "showPathLines": true,
+  "showPathArrows": true,
+  "showPathDots": false,
+  "showLegend": true,
+  "pathDotRadius": 2.5,
+  "pathLineWidth": 2,
+  "pathArrowLength": 8,
+  "pathLineAlpha": 200,
+  "pathDirectionEvery": 10,
+  "crashMarkerRadius": 8,
+  "crashMarkerSpread": 10,
+  "blurSigma": 1.5,
+  "gamma": 0.7,
+  "minDensity": 0.06
+}

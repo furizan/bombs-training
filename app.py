@@ -20,11 +20,13 @@ from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QMessageBox,
+    QPushButton,
     QScrollArea,
     QSizePolicy,
     QSlider,
     QSplitter,
     QStatusBar,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -33,6 +35,7 @@ from install import LOGIC_NAME, MAP_NAME, default_aottg_root, find_aottg_root, i
 from render import ROOT, load_config, render_once, resolve_paths, save_config
 
 CONFIG_PATH = ROOT / "config.json"
+DEFAULTS_PATH = ROOT / "display_defaults.json"
 
 BOOL_SETTINGS = (
     ("showPathLines", "Path lines"),
@@ -58,11 +61,16 @@ INT_SETTINGS = (
 )
 
 
-def pil_to_pixmap(image) -> QPixmap:
-    rgba = image.convert("RGBA")
-    data = rgba.tobytes("raw", "RGBA")
-    qimg = QImage(data, rgba.width, rgba.height, QImage.Format.Format_RGBA8888)
-    return QPixmap.fromImage(qimg.copy())
+def load_display_defaults() -> dict:
+    return json.loads(DEFAULTS_PATH.read_text(encoding="utf-8"))
+
+
+def _values_equal(key: str, current, default) -> bool:
+    if isinstance(default, bool):
+        return bool(current) == default
+    if isinstance(default, int) and key in {k for k, *_ in INT_SETTINGS}:
+        return int(round(float(current))) == default
+    return abs(float(current) - float(default)) < 1e-6
 
 
 class SliderSpinRow(QWidget):
@@ -89,15 +97,9 @@ class SliderSpinRow(QWidget):
         self.slider.setMaximum(int(maximum * self._scale))
         self.slider.setSingleStep(max(1, int(step * self._scale)))
 
-        if decimals:
-            self.spin = QDoubleSpinBox()
-            self.spin.setDecimals(decimals)
-            self.spin.setSingleStep(step)
-        else:
-            self.spin = QDoubleSpinBox()
-            self.spin.setDecimals(0)
-            self.spin.setSingleStep(step)
-
+        self.spin = QDoubleSpinBox()
+        self.spin.setDecimals(decimals)
+        self.spin.setSingleStep(step)
         self.spin.setRange(minimum, maximum)
         self.set_value(value)
 
@@ -131,14 +133,23 @@ class SliderSpinRow(QWidget):
         self.slider.blockSignals(False)
 
 
+def pil_to_pixmap(image) -> QPixmap:
+    rgba = image.convert("RGBA")
+    data = rgba.tobytes("raw", "RGBA")
+    qimg = QImage(data, rgba.width, rgba.height, QImage.Format.Format_RGBA8888)
+    return QPixmap.fromImage(qimg.copy())
+
+
 class SettingsPanel(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._config_path = CONFIG_PATH
+        self._defaults = load_display_defaults()
         self._loading = False
         self._boxes: dict[str, QCheckBox] = {}
         self._float_rows: dict[str, SliderSpinRow] = {}
         self._int_rows: dict[str, SliderSpinRow] = {}
+        self._reset_buttons: dict[str, QToolButton] = {}
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(8, 8, 8, 8)
@@ -157,28 +168,15 @@ class SettingsPanel(QWidget):
         display = QGroupBox("Crash map")
         display_layout = QVBoxLayout(display)
         for key, label in BOOL_SETTINGS:
-            box = QCheckBox(label)
-            box.toggled.connect(self._on_change)
-            self._boxes[key] = box
-            display_layout.addWidget(box)
+            self._add_bool_setting(display_layout, key, label)
 
         for key, label, min_v, max_v, step, decimals in FLOAT_SETTINGS:
             if key in ("blurSigma", "gamma", "minDensity"):
                 continue
-            row = SliderSpinRow(label, 0.0, min_v, max_v, step, decimals=decimals)
-            row.slider.valueChanged.connect(lambda _v, k=key: self._on_change())
-            row.spin.valueChanged.connect(lambda _v, k=key: self._on_change())
-            self._float_rows[key] = row
-            display_layout.addWidget(row.label)
-            display_layout.addWidget(row)
+            self._add_slider_setting(display_layout, key, label, min_v, max_v, step, decimals, self._float_rows)
 
         for key, label, min_v, max_v, step in INT_SETTINGS:
-            row = SliderSpinRow(label, 0.0, float(min_v), float(max_v), float(step), decimals=0)
-            row.slider.valueChanged.connect(lambda _v, k=key: self._on_change())
-            row.spin.valueChanged.connect(lambda _v, k=key: self._on_change())
-            self._int_rows[key] = row
-            display_layout.addWidget(row.label)
-            display_layout.addWidget(row)
+            self._add_slider_setting(display_layout, key, label, min_v, max_v, step, 0, self._int_rows)
 
         form.addRow(display)
 
@@ -187,16 +185,15 @@ class SettingsPanel(QWidget):
         for key, label, min_v, max_v, step, decimals in FLOAT_SETTINGS:
             if key not in ("blurSigma", "gamma", "minDensity"):
                 continue
-            row = SliderSpinRow(label, 0.0, min_v, max_v, step, decimals=decimals)
-            row.slider.valueChanged.connect(lambda _v, k=key: self._on_change())
-            row.spin.valueChanged.connect(lambda _v, k=key: self._on_change())
-            self._float_rows[key] = row
-            heatmap_layout.addWidget(row.label)
-            heatmap_layout.addWidget(row)
+            self._add_slider_setting(heatmap_layout, key, label, min_v, max_v, step, decimals, self._float_rows)
         form.addRow(heatmap)
 
         scroll.setWidget(body)
         outer.addWidget(scroll, stretch=1)
+
+        reset_all = QPushButton("Reset All to Defaults")
+        reset_all.clicked.connect(self._reset_all)
+        outer.addWidget(reset_all)
 
         self._apply_timer = QTimer(self)
         self._apply_timer.setSingleShot(True)
@@ -205,34 +202,117 @@ class SettingsPanel(QWidget):
 
         self.reload()
 
+    def _make_reset_button(self, key: str) -> QToolButton:
+        button = QToolButton()
+        button.setText("↺")
+        button.setToolTip("Reset to default")
+        button.setAutoRaise(True)
+        button.clicked.connect(lambda: self._reset_key(key))
+        self._reset_buttons[key] = button
+        return button
+
+    def _add_bool_setting(self, layout: QVBoxLayout, key: str, label: str) -> None:
+        row = QHBoxLayout()
+        box = QCheckBox(label)
+        box.toggled.connect(self._on_change)
+        self._boxes[key] = box
+        row.addWidget(box)
+        row.addStretch()
+        row.addWidget(self._make_reset_button(key))
+        layout.addLayout(row)
+
+    def _add_slider_setting(
+        self,
+        layout: QVBoxLayout,
+        key: str,
+        label: str,
+        min_v: float,
+        max_v: float,
+        step: float,
+        decimals: int,
+        store: dict[str, SliderSpinRow],
+    ) -> None:
+        header = QHBoxLayout()
+        header.addWidget(QLabel(label))
+        header.addStretch()
+        header.addWidget(self._make_reset_button(key))
+        layout.addLayout(header)
+
+        row = SliderSpinRow(label, 0.0, min_v, max_v, step, decimals=decimals)
+        row.label.hide()
+        row.slider.valueChanged.connect(self._on_change)
+        row.spin.valueChanged.connect(self._on_change)
+        store[key] = row
+        layout.addWidget(row)
+
+    def _current_value(self, key: str):
+        if key in self._boxes:
+            return self._boxes[key].isChecked()
+        if key in self._int_rows:
+            return int(round(self._int_rows[key].value()))
+        return self._float_rows[key].value()
+
+    def _set_value(self, key: str, value) -> None:
+        if key in self._boxes:
+            self._boxes[key].setChecked(bool(value))
+        elif key in self._int_rows:
+            self._int_rows[key].set_value(float(int(value)))
+        else:
+            self._float_rows[key].set_value(float(value))
+
+    def _update_reset_states(self) -> None:
+        for key, button in self._reset_buttons.items():
+            default = self._defaults[key]
+            button.setEnabled(not _values_equal(key, self._current_value(key), default))
+
     def reload(self) -> None:
         self._loading = True
         config = load_config(self._config_path)
-        for key, box in self._boxes.items():
-            box.setChecked(bool(config.get(key, True)))
-        for key, row in self._float_rows.items():
-            row.set_value(float(config.get(key, 0.0)))
-        for key, row in self._int_rows.items():
-            row.set_value(float(int(config.get(key, 0))))
+        for key in self._defaults:
+            if key in config:
+                self._set_value(key, config[key])
+            else:
+                self._set_value(key, self._defaults[key])
         self._loading = False
+        self._update_reset_states()
+
+    def _reset_key(self, key: str) -> None:
+        self._loading = True
+        self._set_value(key, self._defaults[key])
+        self._loading = False
+        self._update_reset_states()
+        self._apply_timer.start()
+
+    def _reset_all(self) -> None:
+        answer = QMessageBox.question(
+            self,
+            "Reset all settings?",
+            "Reset every display setting to its default?",
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        self._loading = True
+        for key, value in self._defaults.items():
+            self._set_value(key, value)
+        self._loading = False
+        self._update_reset_states()
+        self._apply_timer.start()
 
     def _on_change(self) -> None:
         if self._loading:
             return
+        self._update_reset_states()
         self._apply_timer.start()
 
     def _collect_config(self) -> dict:
         config = load_config(self._config_path)
-        for key, box in self._boxes.items():
-            config[key] = box.isChecked()
-        for key, row in self._float_rows.items():
-            config[key] = row.value()
-        for key, row in self._int_rows.items():
-            config[key] = int(round(row.value()))
+        for key in self._defaults:
+            config[key] = self._current_value(key)
         return config
 
     def _apply(self) -> None:
         save_config(self._config_path, self._collect_config())
+        self._update_reset_states()
         window = self.window()
         if isinstance(window, MainWindow):
             window.on_settings_applied()
