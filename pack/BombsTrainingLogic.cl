@@ -486,6 +486,10 @@ extension CustomUI {
         UI.SetLabelAll("TopLeft", "");
     }
 
+    function FormatSpeed(speed) {
+        return String.FormatFloat(speed, 0) + " u/s";
+    }
+
     function ShowTopCenter(remaining, speed, aboveThreshold) {
         speedColor = Main.UiAccentColor;
 
@@ -515,7 +519,7 @@ extension CustomUI {
     }
 
     function BuildRunConfigLine() {
-        return "Run " + String.FormatFloat(Main.RunLength, 0) + "s, threshold " + String.FormatFloat(Main.FlyThreshold, 0);
+        return "Run " + String.FormatFloat(Main.RunLength, 0) + "s, threshold " + self.FormatSpeed(Main.FlyThreshold);
     }
 
     function BuildRunSummary() {
@@ -523,8 +527,8 @@ extension CustomUI {
 
         return Convert.ToString(Run._crashes) + " crashes" + String.Newline +
             self.BuildRunConfigLine() + String.Newline +
-            "Average speed: " + String.FormatFloat(Run.GetAverageSpeed(), 0) + String.Newline +
-            "Peak speed: " + String.FormatFloat(Run._highestSpeed, 0) + String.Newline +
+            "Average speed: " + self.FormatSpeed(Run.GetAverageSpeed()) + String.Newline +
+            "Peak speed: " + self.FormatSpeed(Run._highestSpeed) + String.Newline +
             "Above threshold: " + String.FormatFloat(timeAbovePercent, 0) + "%" + String.Newline +
             "Longest without crash: " + String.FormatFloat(Run._maxStreak, 0) + "s";
     }
@@ -537,8 +541,8 @@ extension CustomUI {
         UI.CreatePopup("Finished", "Run Finished", popupWidth, popupHeight);
         UI.AddPopupLabel("Finished", "<b>" + Convert.ToString(Run._crashes) + " crashes</b>");
         UI.AddPopupLabel("Finished", self.BuildRunConfigLine());
-        UI.AddPopupLabel("Finished", "Average Speed: " + String.FormatFloat(Run.GetAverageSpeed(), 0));
-        UI.AddPopupLabel("Finished", "Peak Speed: " + String.FormatFloat(Run._highestSpeed, 0));
+        UI.AddPopupLabel("Finished", "Average Speed: " + self.FormatSpeed(Run.GetAverageSpeed()));
+        UI.AddPopupLabel("Finished", "Peak Speed: " + self.FormatSpeed(Run._highestSpeed));
         UI.AddPopupLabel("Finished", "Above Threshold: " + String.FormatFloat(timeAbovePercent, 0) + "%");
         UI.AddPopupLabel("Finished", "Longest Without Crash: " + String.FormatFloat(Run._maxStreak, 0) + "s");
 
