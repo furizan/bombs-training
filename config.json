@@ -20,7 +20,7 @@
   "startMarkerRadius": 6,
   "pathLineWidth": 2.0,
   "pathLineAlpha": 200,
-  "pathArrowAlpha": 161,
+  "pathArrowAlpha": 255,
   "pathDotAlpha": 255,
   "pathDirectionEvery": 10,
   "pathArrowLength": 8.0,

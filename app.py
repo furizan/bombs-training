@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QDoubleSpinBox,
     QFileDialog,
-    QFormLayout,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -39,44 +39,73 @@ CONFIG_PATH = ROOT / "config.json"
 DEFAULTS_PATH = ROOT / "display_defaults.json"
 
 BOOL_SETTINGS = (
-    ("showPathLines", "Path lines"),
-    ("showPathArrows", "Path arrows"),
-    ("showPathDots", "Path dots"),
+    ("showPathLines", "Lines"),
+    ("showPathArrows", "Arrows"),
+    ("showPathDots", "Dots"),
     ("showLegend", "Legend"),
 )
 
 FLOAT_SETTINGS = (
-    ("pathDotRadius", "Path dot size", 0.5, 12.0, 0.5, 1),
-    ("pathLineWidth", "Path line width", 1.0, 8.0, 0.5, 1),
-    ("pathArrowLength", "Arrow length", 3.0, 24.0, 1.0, 0),
-    ("crashMarkerRadius", "Crash marker size", 3.0, 24.0, 1.0, 0),
-    ("blurSigma", "Heatmap blur", 0.0, 5.0, 0.1, 1),
-    ("gamma", "Heatmap gamma", 0.1, 2.0, 0.05, 2),
-    ("minDensity", "Heatmap min density", 0.0, 1.0, 0.01, 2),
+    ("pathDotRadius", 0.5, 12.0, 0.5, 1),
+    ("pathLineWidth", 1.0, 8.0, 0.5, 1),
+    ("pathArrowLength", 3.0, 24.0, 1.0, 0),
+    ("crashMarkerRadius", 3.0, 24.0, 1.0, 0),
+    ("blurSigma", 0.0, 5.0, 0.1, 1),
+    ("gamma", 0.1, 2.0, 0.05, 2),
+    ("minDensity", 0.0, 1.0, 0.01, 2),
 )
 
 INT_SETTINGS = (
-    ("pathLineAlpha", "Path line alpha", 0, 255, 1),
-    ("pathArrowAlpha", "Path arrow alpha", 0, 255, 1),
-    ("pathDotAlpha", "Path dot alpha", 0, 255, 1),
-    ("crashMarkerAlpha", "Crash marker alpha", 0, 255, 1),
-    ("pathDirectionEvery", "Arrow every N points", 1, 50, 1),
+    ("pathLineAlpha", 0, 255, 1),
+    ("pathArrowAlpha", 0, 255, 1),
+    ("pathDotAlpha", 0, 255, 1),
+    ("crashMarkerAlpha", 0, 255, 1),
+    ("pathDirectionEvery", 1, 50, 1),
 )
 
-_FLOAT_BY_KEY = {key: (label, min_v, max_v, step, decimals) for key, label, min_v, max_v, step, decimals in FLOAT_SETTINGS}
-_INT_BY_KEY = {key: (label, min_v, max_v, step) for key, label, min_v, max_v, step in INT_SETTINGS}
+SETTING_LABELS = {
+    "pathLineWidth": "Width",
+    "pathLineAlpha": "Alpha",
+    "pathDotRadius": "Size",
+    "pathDotAlpha": "Alpha",
+    "pathArrowLength": "Length",
+    "pathArrowAlpha": "Alpha",
+    "pathDirectionEvery": "Spacing",
+    "crashMarkerRadius": "Size",
+    "crashMarkerAlpha": "Alpha",
+    "blurSigma": "Blur",
+    "gamma": "Gamma",
+    "minDensity": "Floor",
+}
+
+SETTING_TOOLTIPS = {
+    "showPathLines": "Draw colored path segments between crashes",
+    "showPathArrows": "Draw direction arrows along the path",
+    "showPathDots": "Draw a dot at each recorded sample point",
+    "showLegend": "Show the key strip below the map",
+    "pathLineWidth": "Path line thickness in pixels",
+    "pathLineAlpha": "Path line transparency (0–255)",
+    "pathDotRadius": "Sample dot radius in pixels",
+    "pathDotAlpha": "Sample dot transparency (0–255)",
+    "pathArrowLength": "Direction arrow length in pixels",
+    "pathArrowAlpha": "Direction arrow transparency (0–255)",
+    "pathDirectionEvery": "Draw an arrow every N sample points",
+    "crashMarkerRadius": "Crash marker radius in pixels",
+    "crashMarkerAlpha": "Crash marker transparency (0–255)",
+    "blurSigma": "Gaussian blur applied to the heatmap",
+    "gamma": "Contrast curve for density values",
+    "minDensity": "Hide cells below this normalized density",
+}
+
+_FLOAT_BY_KEY = {key: (min_v, max_v, step, decimals) for key, min_v, max_v, step, decimals in FLOAT_SETTINGS}
+_INT_BY_KEY = {key: (min_v, max_v, step) for key, min_v, max_v, step in INT_SETTINGS}
 _INT_KEYS = frozenset(_INT_BY_KEY)
 
-CRASH_MAP_SLIDER_ORDER = (
-    "pathLineWidth",
-    "pathLineAlpha",
-    "pathDotRadius",
-    "pathDotAlpha",
-    "pathArrowLength",
-    "pathArrowAlpha",
-    "pathDirectionEvery",
-    "crashMarkerRadius",
-    "crashMarkerAlpha",
+CRASH_MAP_SECTIONS = (
+    ("Path line", ("pathLineWidth", "pathLineAlpha")),
+    ("Path dots", ("pathDotRadius", "pathDotAlpha")),
+    ("Path arrows", ("pathArrowLength", "pathArrowAlpha", "pathDirectionEvery")),
+    ("Crash markers", ("crashMarkerRadius", "crashMarkerAlpha")),
 )
 
 HEATMAP_SLIDER_ORDER = (
@@ -151,7 +180,10 @@ def _values_equal(key: str, current, default) -> bool:
 
 
 class SliderSpinRow(QWidget):
-    """Slider linked to a spin box for one numeric setting."""
+    """One setting: label, slider, value, optional reset — single row."""
+
+    _LABEL_WIDTH = 58
+    _SPIN_WIDTH = 52
 
     def __init__(
         self,
@@ -162,6 +194,8 @@ class SliderSpinRow(QWidget):
         step: float,
         *,
         decimals: int = 0,
+        reset_button: QToolButton | None = None,
+        tooltip: str = "",
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -169,6 +203,13 @@ class SliderSpinRow(QWidget):
         self._decimals = decimals
 
         self.label = QLabel(label)
+        self.label.setMinimumWidth(self._LABEL_WIDTH)
+        self.label.setMaximumWidth(self._LABEL_WIDTH)
+        self.label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        if tooltip:
+            self.label.setToolTip(tooltip)
+            self.setToolTip(tooltip)
+
         self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.setMinimum(int(minimum * self._scale))
         self.slider.setMaximum(int(maximum * self._scale))
@@ -178,6 +219,10 @@ class SliderSpinRow(QWidget):
         self.spin.setDecimals(decimals)
         self.spin.setSingleStep(step)
         self.spin.setRange(minimum, maximum)
+        self.spin.setFixedWidth(self._SPIN_WIDTH)
+        if tooltip:
+            self.spin.setToolTip(tooltip)
+            self.slider.setToolTip(tooltip)
         self.set_value(value)
 
         self.slider.valueChanged.connect(self._from_slider)
@@ -185,8 +230,12 @@ class SliderSpinRow(QWidget):
 
         row = QHBoxLayout(self)
         row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(6)
+        row.addWidget(self.label)
         row.addWidget(self.slider, stretch=1)
         row.addWidget(self.spin)
+        if reset_button is not None:
+            row.addWidget(reset_button)
 
     def set_value(self, value: float) -> None:
         self.slider.blockSignals(True)
@@ -238,25 +287,48 @@ class SettingsPanel(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
         body = QWidget()
-        form = QFormLayout(body)
-        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        body_layout = QVBoxLayout(body)
+        body_layout.setContentsMargins(0, 0, 0, 0)
+        body_layout.setSpacing(10)
 
-        display = QGroupBox("Crash map")
-        display_layout = QVBoxLayout(display)
-        for key, label in BOOL_SETTINGS:
-            self._add_bool_setting(display_layout, key, label)
+        crash_group = QGroupBox("Crash map")
+        crash_layout = QVBoxLayout(crash_group)
+        crash_layout.setSpacing(8)
 
-        for key in CRASH_MAP_SLIDER_ORDER:
-            self._add_ordered_slider_setting(display_layout, key)
+        layers_box = QGroupBox("Layers")
+        layers_grid = QGridLayout(layers_box)
+        layers_grid.setHorizontalSpacing(12)
+        layers_grid.setVerticalSpacing(4)
+        for index, (key, label) in enumerate(BOOL_SETTINGS):
+            cell = QWidget()
+            cell_layout = QHBoxLayout(cell)
+            cell_layout.setContentsMargins(0, 0, 0, 0)
+            cell_layout.setSpacing(4)
+            box = QCheckBox(label)
+            box.toggled.connect(self._on_change)
+            tip = SETTING_TOOLTIPS.get(key, "")
+            if tip:
+                box.setToolTip(tip)
+            self._boxes[key] = box
+            cell_layout.addWidget(box, stretch=1)
+            cell_layout.addWidget(self._make_reset_button(key))
+            layers_grid.addWidget(cell, index // 2, index % 2)
+        crash_layout.addWidget(layers_box)
 
-        form.addRow(display)
+        for section_title, keys in CRASH_MAP_SECTIONS:
+            self._add_section(crash_layout, section_title, keys)
 
-        heatmap = QGroupBox("Heatmap")
-        heatmap_layout = QVBoxLayout(heatmap)
+        body_layout.addWidget(crash_group)
+
+        heatmap_group = QGroupBox("Heatmap")
+        heatmap_layout = QVBoxLayout(heatmap_group)
+        heatmap_layout.setSpacing(4)
         for key in HEATMAP_SLIDER_ORDER:
-            self._add_ordered_slider_setting(heatmap_layout, key)
-        form.addRow(heatmap)
+            self._add_setting_row(heatmap_layout, key)
+        body_layout.addWidget(heatmap_group)
+        body_layout.addStretch()
 
         scroll.setWidget(body)
         outer.addWidget(scroll, stretch=1)
@@ -295,46 +367,49 @@ class SettingsPanel(QWidget):
     def refresh_theme(self) -> None:
         self._update_reset_states()
 
-    def _add_bool_setting(self, layout: QVBoxLayout, key: str, label: str) -> None:
-        row = QHBoxLayout()
-        box = QCheckBox(label)
-        box.toggled.connect(self._on_change)
-        self._boxes[key] = box
-        row.addWidget(box)
-        row.addStretch()
-        row.addWidget(self._make_reset_button(key))
-        layout.addLayout(row)
+    def _add_section(self, parent_layout: QVBoxLayout, title: str, keys: tuple[str, ...]) -> None:
+        box = QGroupBox(title)
+        layout = QVBoxLayout(box)
+        layout.setSpacing(4)
+        layout.setContentsMargins(8, 6, 8, 8)
+        for key in keys:
+            self._add_setting_row(layout, key)
+        parent_layout.addWidget(box)
 
-    def _add_ordered_slider_setting(self, layout: QVBoxLayout, key: str) -> None:
+    def _add_setting_row(self, layout: QVBoxLayout, key: str) -> None:
+        label = SETTING_LABELS.get(key, key)
+        tooltip = SETTING_TOOLTIPS.get(key, "")
+        reset = self._make_reset_button(key)
         if key in _FLOAT_BY_KEY:
-            label, min_v, max_v, step, decimals = _FLOAT_BY_KEY[key]
-            self._add_slider_setting(layout, key, label, min_v, max_v, step, decimals, self._float_rows)
-            return
-        label, min_v, max_v, step = _INT_BY_KEY[key]
-        self._add_slider_setting(layout, key, label, min_v, max_v, step, 0, self._int_rows)
-
-    def _add_slider_setting(
-        self,
-        layout: QVBoxLayout,
-        key: str,
-        label: str,
-        min_v: float,
-        max_v: float,
-        step: float,
-        decimals: int,
-        store: dict[str, SliderSpinRow],
-    ) -> None:
-        header = QHBoxLayout()
-        header.addWidget(QLabel(label))
-        header.addStretch()
-        header.addWidget(self._make_reset_button(key))
-        layout.addLayout(header)
-
-        row = SliderSpinRow(label, 0.0, min_v, max_v, step, decimals=decimals)
-        row.label.hide()
-        row.slider.valueChanged.connect(self._on_change)
-        row.spin.valueChanged.connect(self._on_change)
-        store[key] = row
+            min_v, max_v, step, decimals = _FLOAT_BY_KEY[key]
+            row = SliderSpinRow(
+                label,
+                0.0,
+                min_v,
+                max_v,
+                step,
+                decimals=decimals,
+                reset_button=reset,
+                tooltip=tooltip,
+            )
+            row.slider.valueChanged.connect(self._on_change)
+            row.spin.valueChanged.connect(self._on_change)
+            self._float_rows[key] = row
+        else:
+            min_v, max_v, step = _INT_BY_KEY[key]
+            row = SliderSpinRow(
+                label,
+                0.0,
+                min_v,
+                max_v,
+                step,
+                decimals=0,
+                reset_button=reset,
+                tooltip=tooltip,
+            )
+            row.slider.valueChanged.connect(self._on_change)
+            row.spin.valueChanged.connect(self._on_change)
+            self._int_rows[key] = row
         layout.addWidget(row)
 
     def _current_value(self, key: str):
@@ -501,7 +576,7 @@ class MainWindow(QMainWindow):
         self._map_scroll.setBackgroundRole(QPalette.ColorRole.Base)
 
         self._settings = SettingsPanel(self)
-        self._settings.setMinimumWidth(280)
+        self._settings.setMinimumWidth(300)
         self._settings.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
