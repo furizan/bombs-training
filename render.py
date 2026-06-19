@@ -180,7 +180,7 @@ def save_image_world(config_path: Path, image_world: dict[str, float]) -> None:
 
 
 def source_map_path(config: dict) -> Path:
-    rel = config.get("sourceMap", "../CustomMap/Bombs-CatsForest.txt")
+    rel = config.get("sourceMap", "../CustomMap/BombsTrainingMap.txt")
     path = Path(rel)
     if path.is_absolute():
         return path

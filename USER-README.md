@@ -6,7 +6,7 @@
 
 3. In the app: **File -> Install to AoTTG2**.
 
-4. In-game: load custom map **Bombs-CatsForest**, then start a run.
+4. In-game: load custom map **BombsTrainingMap**, then start a run.
 
 5. Leave the app open. When a run ends, your crash map updates automatically.
 

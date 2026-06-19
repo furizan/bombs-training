@@ -11,8 +11,8 @@ from paths import app_root
 ROOT = app_root()
 PACK = ROOT / "pack"
 
-LOGIC_NAME = "Bombs-TrainingLogic.cl"
-MAP_NAME = "Bombs-CatsForest.txt"
+LOGIC_NAME = "BombsTrainingLogic.cl"
+MAP_NAME = "BombsTrainingMap.txt"
 
 
 def find_aottg_root(start: Path | None = None) -> Path | None:

@@ -13,7 +13,7 @@
   "crashOutputImage": "crashmap.png",
   "treeOutputImage": "treemap.png",
   "treeDotRadius": 3,
-  "sourceMap": "../CustomMap/Bombs-CatsForest.txt",
+  "sourceMap": "../CustomMap/BombsTrainingMap.txt",
   "persistentDataFile": "../PersistentData/bombs_heatmap.txt",
   "blurSigma": 1.5,
   "pathDotRadius": 2.5,

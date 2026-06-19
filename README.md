@@ -4,7 +4,7 @@
 
 Download the release, unzip into your AoTTG2 folder, run `Bombs-Training` (or `Bombs-Training.exe` on Windows).
 
-**File -> Install to AoTTG2** -> in-game load **Bombs-CatsForest**.
+**File -> Install to AoTTG2** -> in-game load **BombsTrainingMap**.
 
 ## Developers
 
