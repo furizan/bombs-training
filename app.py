@@ -33,7 +33,7 @@ from PySide6.QtWidgets import (
 )
 
 from install import LOGIC_NAME, MAP_NAME, default_aottg_root, find_aottg_root, is_installed, run_install
-from render import ROOT, load_config, render_once, resolve_paths, save_config
+from render import ROOT, flatten_rgba, load_config, render_once, resolve_paths, save_config
 
 CONFIG_PATH = ROOT / "config.json"
 DEFAULTS_PATH = ROOT / "display_defaults.json"
@@ -118,6 +118,9 @@ def apply_ui_theme(app: QApplication, theme: str) -> None:
         app.setPalette(app.style().standardPalette())
 
     for widget in app.allWidgets():
+        if isinstance(widget, MapLabel) and widget.has_image():
+            widget.update()
+            continue
         style = widget.style()
         if style is None:
             continue
@@ -204,9 +207,9 @@ class SliderSpinRow(QWidget):
 
 
 def pil_to_pixmap(image) -> QPixmap:
-    rgba = image.convert("RGBA")
-    data = rgba.tobytes("raw", "RGBA")
-    qimg = QImage(data, rgba.width, rgba.height, QImage.Format.Format_RGBA8888)
+    rgb = flatten_rgba(image) if image.mode == "RGBA" else image.convert("RGB")
+    data = rgb.tobytes("raw", "RGB")
+    qimg = QImage(data, rgb.width, rgb.height, rgb.width * 3, QImage.Format.Format_RGB888)
     return QPixmap.fromImage(qimg.copy())
 
 
@@ -409,19 +412,23 @@ class MapLabel(QLabel):
         super().__init__(parent)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setMinimumSize(320, 240)
+        self.setAutoFillBackground(True)
+        self.setBackgroundRole(QPalette.ColorRole.Base)
         self._source: QPixmap | None = None
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._show_context_menu)
         self.refresh_appearance()
 
+    def has_image(self) -> bool:
+        return self._source is not None and not self._source.isNull()
+
     def refresh_appearance(self) -> None:
-        palette = QApplication.palette()
-        bg = palette.color(QPalette.ColorRole.Base).name()
-        if self._source is None or self._source.isNull():
-            fg = palette.color(QPalette.ColorRole.PlaceholderText).name()
-            self.setStyleSheet(f"background: {bg}; color: {fg};")
-        else:
-            self.setStyleSheet(f"background: {bg};")
+        if not self.has_image():
+            self.setForegroundRole(QPalette.ColorRole.PlaceholderText)
+            return
+        self.setForegroundRole(QPalette.ColorRole.WindowText)
+        self.setStyleSheet("")
+        self._fit()
 
     def set_source(self, pixmap: QPixmap | None, *, placeholder: str = "") -> None:
         self._source = pixmap
@@ -483,16 +490,18 @@ class MainWindow(QMainWindow):
         self._theme = "dark"
 
         self._map = MapLabel()
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setWidget(self._map)
+        self._map_scroll = QScrollArea()
+        self._map_scroll.setWidgetResizable(True)
+        self._map_scroll.setWidget(self._map)
+        self._map_scroll.setAutoFillBackground(True)
+        self._map_scroll.setBackgroundRole(QPalette.ColorRole.Base)
 
         self._settings = SettingsPanel(self)
         self._settings.setMinimumWidth(280)
         self._settings.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(scroll)
+        splitter.addWidget(self._map_scroll)
         splitter.addWidget(self._settings)
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 0)

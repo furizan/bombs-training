@@ -542,26 +542,28 @@ def segment_duration(times: list[float | None], point_count: int, sample_dt: flo
 def append_density_legend_below(map_img: Image.Image) -> Image.Image:
     w, map_h = map_img.size
     out = Image.new("RGBA", (w, map_h + LEGEND_HEIGHT), (22, 24, 28, 255))
-    out.paste(map_img, (0, 0))
+    out.paste(map_img.convert("RGBA"), (0, 0))
 
-    draw = ImageDraw.Draw(out)
+    legend_base = Image.new("RGBA", (w, LEGEND_HEIGHT), (22, 24, 28, 255))
+    legend_overlay = Image.new("RGBA", (w, LEGEND_HEIGHT), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(legend_overlay)
     bar_h = 14
     margin = 12
     label_gap = 8
     label_w = 28
     x0 = margin + label_w + label_gap
     x1 = w - margin - label_w - label_gap
-    strip_top = map_h
-    y0 = strip_top + (LEGEND_HEIGHT - bar_h) // 2
+    y0 = (LEGEND_HEIGHT - bar_h) // 2
 
     for x in range(x0, x1):
         t = (x - x0) / max(x1 - x0 - 1, 1)
         draw.line([(x, y0), (x, y0 + bar_h - 1)], fill=heat_rgba(t), width=1)
 
-    draw.rectangle([x0 - 1, y0 - 1, x1, y0 + bar_h], outline=(255, 255, 255, 180))
-    draw.text((margin, y0 - 1), "low", fill=(255, 255, 255, 230))
-    draw.text((x1 + label_gap, y0 - 1), "high", fill=(255, 255, 255, 230))
+    draw.rectangle([x0 - 1, y0 - 1, x1, y0 + bar_h], outline=(255, 255, 255, 255))
+    draw.text((margin, y0 - 1), "low", fill=(255, 255, 255, 255))
+    draw.text((x1 + label_gap, y0 - 1), "high", fill=(255, 255, 255, 255))
 
+    out.paste(Image.alpha_composite(legend_base, legend_overlay), (0, map_h))
     return out
 
 
@@ -569,7 +571,7 @@ def crash_color(index: int) -> tuple[int, int, int, int]:
     """Distinct hue per crash (1-based index)."""
     hue = ((index - 1) * 0.618033988749895) % 1.0
     r, g, b = colorsys.hsv_to_rgb(hue, 0.88, 1.0)
-    return int(r * 255), int(g * 255), int(b * 255), 240
+    return int(r * 255), int(g * 255), int(b * 255), 255
 
 
 def split_path_at_crashes(
@@ -635,6 +637,18 @@ def find_longest_segment(
 
 def with_alpha(color: tuple[int, int, int, int], alpha: int) -> tuple[int, int, int, int]:
     return color[0], color[1], color[2], alpha
+
+
+def flatten_rgba(image: Image.Image, *, fallback: tuple[int, int, int] = (22, 24, 28)) -> Image.Image:
+    """Composite onto an opaque backdrop so saved/viewed colors stay stable."""
+    if image.mode != "RGBA":
+        return image.convert("RGB")
+    background = Image.new("RGBA", image.size, (*fallback, 255))
+    return Image.alpha_composite(background, image).convert("RGB")
+
+
+def save_image(path: Path, image: Image.Image) -> None:
+    flatten_rgba(image).save(path)
 
 
 def draw_path_lines(
@@ -708,8 +722,8 @@ def contrast_text_for_fill(fill: tuple[int, int, int, int]) -> tuple[tuple[int, 
     """Pick text and stroke colors from the marker fill luminance."""
     lum = 0.299 * fill[0] + 0.587 * fill[1] + 0.114 * fill[2]
     if lum > 150:
-        return (24, 24, 24, 255), (255, 255, 255, 200)
-    return (255, 255, 255, 255), (24, 24, 24, 200)
+        return (24, 24, 24, 255), (255, 255, 255, 255)
+    return (255, 255, 255, 255), (24, 24, 24, 255)
 
 
 def draw_labeled_circle(
@@ -723,7 +737,7 @@ def draw_labeled_circle(
     draw.ellipse(
         [x - radius, y - radius, x + radius, y + radius],
         fill=fill,
-        outline=(255, 255, 255, 220),
+        outline=(255, 255, 255, 255),
         width=2,
     )
     if not label:
@@ -829,7 +843,7 @@ def draw_path_legend_sample(
             )
         cursor = dot_start + gap + dot_radius
 
-    draw.text((cursor + 6, y - 6), "path", fill=(255, 255, 255, 230))
+    draw.text((cursor + 6, y - 6), "path", fill=(255, 255, 255, 255))
     return cursor + 38
 
 
@@ -842,17 +856,18 @@ def append_crash_legend_below(
 ) -> Image.Image:
     w, map_h = map_img.size
     out = Image.new("RGBA", (w, map_h + LEGEND_HEIGHT), (22, 24, 28, 255))
-    out.paste(map_img, (0, 0))
+    out.paste(map_img.convert("RGBA"), (0, 0))
 
-    draw = ImageDraw.Draw(out)
-    strip_top = map_h
-    y = strip_top + LEGEND_HEIGHT // 2
+    legend_base = Image.new("RGBA", (w, LEGEND_HEIGHT), (22, 24, 28, 255))
+    legend_overlay = Image.new("RGBA", (w, LEGEND_HEIGHT), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(legend_overlay)
+    y = LEGEND_HEIGHT // 2
     margin = 12
     x = margin
 
     start_color = start_marker_color(has_crashes)
-    draw.ellipse([x - 5, y - 5, x + 5, y + 5], fill=start_color, outline=(255, 255, 255, 200))
-    draw.text((x + 10, y - 6), "start", fill=(255, 255, 255, 230))
+    draw.ellipse([x - 5, y - 5, x + 5, y + 5], fill=start_color, outline=(255, 255, 255, 255))
+    draw.text((x + 10, y - 6), "start", fill=(255, 255, 255, 255))
     x += 52
 
     x = draw_path_legend_sample(draw, x, y, config)
@@ -860,7 +875,7 @@ def append_crash_legend_below(
 
     draw_labeled_circle(draw, x, y, 7, crash_color(1), "1")
     draw_labeled_circle(draw, x + 28, y, 7, crash_color(2), "2")
-    draw.text((x + 40, y - 6), "crashes", fill=(255, 255, 255, 230))
+    draw.text((x + 40, y - 6), "crashes", fill=(255, 255, 255, 255))
     x += 108
 
     if longest_seconds > 0:
@@ -869,9 +884,10 @@ def append_crash_legend_below(
         draw.text(
             (x + 34, y - 6),
             f"longest {longest_seconds:.0f}s",
-            fill=(255, 255, 255, 230),
+            fill=(255, 255, 255, 255),
         )
 
+    out.paste(Image.alpha_composite(legend_base, legend_overlay), (0, map_h))
     return out
 
 
@@ -913,7 +929,7 @@ def render_density(config: dict, export: dict, map_path: Path, out_path: Path) -
     if config.get("showLegend", True):
         result = append_density_legend_below(result)
 
-    result.save(out_path)
+    save_image(out_path, result)
 
     print(f"Wrote {out_path} ({total} samples)")
     return total
@@ -1014,7 +1030,7 @@ def render_crashmap(config: dict, export: dict, map_path: Path, out_path: Path) 
             result, longest_color_index, longest_seconds, bool(crashes), config
         )
 
-    result.save(out_path)
+    save_image(out_path, result)
 
     print(f"Wrote {out_path} ({len(path)} path points, {len(crashes)} crashes)")
     return len(path), len(crashes)
@@ -1045,7 +1061,7 @@ def render_treemap(config: dict, map_path: Path, out_path: Path) -> int:
         )
 
     result = Image.alpha_composite(base, overlay)
-    result.save(out_path)
+    save_image(out_path, result)
 
     mean, right, left, count = _tree_match_error(
         trees,
