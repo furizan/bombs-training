@@ -1,0 +1,12 @@
+{
+  "version": "int:3",
+  "gridSize": "int:96",
+  "minX": "float:-648",
+  "maxX": "float:648",
+  "minZ": "float:-648",
+  "maxZ": "float:648",
+  "maxStreak": "float:12.5",
+  "cells": "string:48,48,3;49,48,1;50,49,2",
+  "path": "string:0.0,0.0,0.0;100.0,0.0,0.2;100.0,100.0,0.4;0.0,100.0,0.6",
+  "crashes": "string:100.0,0.0;0.0,100.0"
+}
