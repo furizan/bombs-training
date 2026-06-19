@@ -10,4 +10,4 @@
 
 5. Leave the app open. When a run ends, your crash map updates automatically.
 
-**Tab** or **Space** switches between crash map and heatmap.
+**Space** switches between crash map and heatmap.

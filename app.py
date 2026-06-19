@@ -8,17 +8,22 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QImage, QKeySequence, QPixmap, QShortcut
+from PySide6.QtGui import QAction, QImage, QKeySequence, QPixmap, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
-    QDialog,
-    QDialogButtonBox,
+    QDoubleSpinBox,
     QFileDialog,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
     QLabel,
     QMainWindow,
     QMessageBox,
     QScrollArea,
+    QSizePolicy,
+    QSlider,
+    QSplitter,
     QStatusBar,
     QVBoxLayout,
     QWidget,
@@ -29,11 +34,27 @@ from render import ROOT, load_config, render_once, resolve_paths, save_config
 
 CONFIG_PATH = ROOT / "config.json"
 
-PATH_OPTIONS = (
+BOOL_SETTINGS = (
     ("showPathLines", "Path lines"),
     ("showPathArrows", "Path arrows"),
     ("showPathDots", "Path dots"),
     ("showLegend", "Legend"),
+)
+
+FLOAT_SETTINGS = (
+    ("pathDotRadius", "Path dot size", 0.5, 12.0, 0.5, 1),
+    ("pathLineWidth", "Path line width", 1.0, 8.0, 0.5, 1),
+    ("pathArrowLength", "Arrow length", 3.0, 24.0, 1.0, 0),
+    ("crashMarkerRadius", "Crash marker size", 3.0, 24.0, 1.0, 0),
+    ("crashMarkerSpread", "Crash spread", 0.0, 30.0, 1.0, 0),
+    ("blurSigma", "Heatmap blur", 0.0, 5.0, 0.1, 1),
+    ("gamma", "Heatmap gamma", 0.1, 2.0, 0.05, 2),
+    ("minDensity", "Heatmap min density", 0.0, 1.0, 0.01, 2),
+)
+
+INT_SETTINGS = (
+    ("pathLineAlpha", "Path line alpha", 0, 255, 1),
+    ("pathDirectionEvery", "Arrow every N points", 1, 50, 1),
 )
 
 
@@ -44,29 +65,177 @@ def pil_to_pixmap(image) -> QPixmap:
     return QPixmap.fromImage(qimg.copy())
 
 
-class SettingsDialog(QDialog):
-    def __init__(self, config: dict, parent: QWidget | None = None) -> None:
+class SliderSpinRow(QWidget):
+    """Slider linked to a spin box for one numeric setting."""
+
+    def __init__(
+        self,
+        label: str,
+        value: float,
+        minimum: float,
+        maximum: float,
+        step: float,
+        *,
+        decimals: int = 0,
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Display settings")
-        self._config = json.loads(json.dumps(config))
+        self._scale = 10**decimals if decimals else 1
+        self._decimals = decimals
+
+        self.label = QLabel(label)
+        self.slider = QSlider(Qt.Orientation.Horizontal)
+        self.slider.setMinimum(int(minimum * self._scale))
+        self.slider.setMaximum(int(maximum * self._scale))
+        self.slider.setSingleStep(max(1, int(step * self._scale)))
+
+        if decimals:
+            self.spin = QDoubleSpinBox()
+            self.spin.setDecimals(decimals)
+            self.spin.setSingleStep(step)
+        else:
+            self.spin = QDoubleSpinBox()
+            self.spin.setDecimals(0)
+            self.spin.setSingleStep(step)
+
+        self.spin.setRange(minimum, maximum)
+        self.set_value(value)
+
+        self.slider.valueChanged.connect(self._from_slider)
+        self.spin.valueChanged.connect(self._from_spin)
+
+        row = QHBoxLayout(self)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.addWidget(self.slider, stretch=1)
+        row.addWidget(self.spin)
+
+    def set_value(self, value: float) -> None:
+        self.slider.blockSignals(True)
+        self.spin.blockSignals(True)
+        self.slider.setValue(int(round(value * self._scale)))
+        self.spin.setValue(value)
+        self.slider.blockSignals(False)
+        self.spin.blockSignals(False)
+
+    def value(self) -> float:
+        return float(self.spin.value())
+
+    def _from_slider(self, raw: int) -> None:
+        self.spin.blockSignals(True)
+        self.spin.setValue(raw / self._scale)
+        self.spin.blockSignals(False)
+
+    def _from_spin(self, value: float) -> None:
+        self.slider.blockSignals(True)
+        self.slider.setValue(int(round(value * self._scale)))
+        self.slider.blockSignals(False)
+
+
+class SettingsPanel(QWidget):
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._config_path = CONFIG_PATH
+        self._loading = False
         self._boxes: dict[str, QCheckBox] = {}
+        self._float_rows: dict[str, SliderSpinRow] = {}
+        self._int_rows: dict[str, SliderSpinRow] = {}
 
-        layout = QVBoxLayout(self)
-        for key, label in PATH_OPTIONS:
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(8, 8, 8, 8)
+
+        title = QLabel("Settings")
+        title.setStyleSheet("font-weight: bold; font-size: 14px;")
+        outer.addWidget(title)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        body = QWidget()
+        form = QFormLayout(body)
+        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+
+        display = QGroupBox("Crash map")
+        display_layout = QVBoxLayout(display)
+        for key, label in BOOL_SETTINGS:
             box = QCheckBox(label)
-            box.setChecked(bool(self._config.get(key, True)))
+            box.toggled.connect(self._on_change)
             self._boxes[key] = box
-            layout.addWidget(box)
+            display_layout.addWidget(box)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        for key, label, min_v, max_v, step, decimals in FLOAT_SETTINGS:
+            if key in ("blurSigma", "gamma", "minDensity"):
+                continue
+            row = SliderSpinRow(label, 0.0, min_v, max_v, step, decimals=decimals)
+            row.slider.valueChanged.connect(lambda _v, k=key: self._on_change())
+            row.spin.valueChanged.connect(lambda _v, k=key: self._on_change())
+            self._float_rows[key] = row
+            display_layout.addWidget(row.label)
+            display_layout.addWidget(row)
 
-    def config(self) -> dict:
+        for key, label, min_v, max_v, step in INT_SETTINGS:
+            row = SliderSpinRow(label, 0.0, float(min_v), float(max_v), float(step), decimals=0)
+            row.slider.valueChanged.connect(lambda _v, k=key: self._on_change())
+            row.spin.valueChanged.connect(lambda _v, k=key: self._on_change())
+            self._int_rows[key] = row
+            display_layout.addWidget(row.label)
+            display_layout.addWidget(row)
+
+        form.addRow(display)
+
+        heatmap = QGroupBox("Heatmap")
+        heatmap_layout = QVBoxLayout(heatmap)
+        for key, label, min_v, max_v, step, decimals in FLOAT_SETTINGS:
+            if key not in ("blurSigma", "gamma", "minDensity"):
+                continue
+            row = SliderSpinRow(label, 0.0, min_v, max_v, step, decimals=decimals)
+            row.slider.valueChanged.connect(lambda _v, k=key: self._on_change())
+            row.spin.valueChanged.connect(lambda _v, k=key: self._on_change())
+            self._float_rows[key] = row
+            heatmap_layout.addWidget(row.label)
+            heatmap_layout.addWidget(row)
+        form.addRow(heatmap)
+
+        scroll.setWidget(body)
+        outer.addWidget(scroll, stretch=1)
+
+        self._apply_timer = QTimer(self)
+        self._apply_timer.setSingleShot(True)
+        self._apply_timer.setInterval(350)
+        self._apply_timer.timeout.connect(self._apply)
+
+        self.reload()
+
+    def reload(self) -> None:
+        self._loading = True
+        config = load_config(self._config_path)
         for key, box in self._boxes.items():
-            self._config[key] = box.isChecked()
-        return self._config
+            box.setChecked(bool(config.get(key, True)))
+        for key, row in self._float_rows.items():
+            row.set_value(float(config.get(key, 0.0)))
+        for key, row in self._int_rows.items():
+            row.set_value(float(int(config.get(key, 0))))
+        self._loading = False
+
+    def _on_change(self) -> None:
+        if self._loading:
+            return
+        self._apply_timer.start()
+
+    def _collect_config(self) -> dict:
+        config = load_config(self._config_path)
+        for key, box in self._boxes.items():
+            config[key] = box.isChecked()
+        for key, row in self._float_rows.items():
+            config[key] = row.value()
+        for key, row in self._int_rows.items():
+            config[key] = int(round(row.value()))
+        return config
+
+    def _apply(self) -> None:
+        save_config(self._config_path, self._collect_config())
+        window = self.window()
+        if isinstance(window, MainWindow):
+            window.on_settings_applied()
 
 
 class MapLabel(QLabel):
@@ -105,7 +274,7 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("Bombs-Training")
-        self.resize(960, 720)
+        self.resize(1100, 720)
 
         self._config_path = CONFIG_PATH
         self._view = "crash"
@@ -115,13 +284,25 @@ class MainWindow(QMainWindow):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setWidget(self._map)
-        self.setCentralWidget(scroll)
+
+        self._settings = SettingsPanel(self)
+        self._settings.setMinimumWidth(280)
+        self._settings.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.addWidget(scroll)
+        splitter.addWidget(self._settings)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 0)
+        self._splitter = splitter
+        self.setCentralWidget(splitter)
+
+        self._settings.hide()
 
         self._status = QStatusBar()
         self.setStatusBar(self._status)
 
         self._build_menu()
-        QShortcut(QKeySequence(Qt.Key.Key_Tab), self, self._toggle_view)
         QShortcut(QKeySequence(Qt.Key.Key_Space), self, self._toggle_view)
 
         self._timer = QTimer(self)
@@ -134,14 +315,56 @@ class MainWindow(QMainWindow):
         self._show_current()
 
     def _build_menu(self) -> None:
+        self._settings_action = QAction("Settings", self)
+        self._settings_action.setCheckable(True)
+        self._settings_action.setChecked(False)
+        self._settings_action.triggered.connect(self._toggle_settings)
+
+        toolbar = self.addToolBar("Main")
+        toolbar.setMovable(False)
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        toolbar.addWidget(spacer)
+        toolbar.addAction(self._settings_action)
+
         menu = self.menuBar().addMenu("&File")
         menu.addAction("Install to AoTTG2…", self._install)
-        menu.addAction("Settings…", self._settings)
-        menu.addSeparator()
-        menu.addAction("Show &crash map", lambda: self._set_view("crash"))
-        menu.addAction("Show &heatmap", lambda: self._set_view("heatmap"))
         menu.addSeparator()
         menu.addAction("E&xit", self.close)
+
+        view_menu = self.menuBar().addMenu("&View")
+        view_menu.addAction(self._settings_action)
+        view_menu.addSeparator()
+
+        self._toggle_view_action = QAction("Toggle map\tSpace", self)
+        self._toggle_view_action.triggered.connect(self._toggle_view)
+        view_menu.addAction(self._toggle_view_action)
+
+        self._crash_action = QAction("Show &crash map", self)
+        self._crash_action.triggered.connect(lambda: self._set_view("crash"))
+        view_menu.addAction(self._crash_action)
+
+        self._heatmap_action = QAction("Show &heatmap", self)
+        self._heatmap_action.triggered.connect(lambda: self._set_view("heatmap"))
+        view_menu.addAction(self._heatmap_action)
+
+    def _toggle_settings(self, visible: bool) -> None:
+        self._settings.setVisible(visible)
+        if visible:
+            width = max(self._splitter.width(), 1)
+            self._splitter.setSizes([max(width - 300, 400), 300])
+
+    def on_settings_applied(self) -> None:
+        self._refresh_paths()
+        if not self._export_path.is_file():
+            self._status.showMessage("Settings saved.", 3000)
+            return
+        try:
+            render_once(self._config_path)
+            self._show_current()
+            self._status.showMessage("Settings applied.", 3000)
+        except (json.JSONDecodeError, OSError, ValueError) as err:
+            self._status.showMessage(f"Render failed: {err}", 5000)
 
     def _refresh_paths(self) -> None:
         self._config, self._export_path, self._map_path, self._density_out, self._crash_out = resolve_paths(
@@ -202,20 +425,6 @@ class MainWindow(QMainWindow):
             )
         else:
             QMessageBox.warning(self, "Install", detail)
-
-    def _settings(self) -> None:
-        dialog = SettingsDialog(load_config(self._config_path), self)
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            return
-        save_config(self._config_path, dialog.config())
-        self._refresh_paths()
-        if self._export_path.is_file():
-            try:
-                render_once(self._config_path)
-                self._show_current()
-                self._status.showMessage("Settings applied.", 3000)
-            except (json.JSONDecodeError, OSError, ValueError) as err:
-                QMessageBox.warning(self, "Render failed", str(err))
 
     def _set_view(self, view: str) -> None:
         if view not in self._paths:
