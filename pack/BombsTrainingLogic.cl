@@ -7,8 +7,8 @@ class Main {
     FlyThreshold = 100.0;
     FlyThresholdTooltip = "Speed required to start a flight segment";
 
-    CrashHysteresis = 10.0;
-    CrashHysteresisTooltip = "Speed can drop this far below the threshold before a crash is considered";
+    CrashMargin = 10.0;
+    CrashMarginTooltip = "Speed buffer so tiny dips don't instantly count as crashing.";
 
     CrashGraceTime = 0.25;
     CrashGraceTimeTooltip = "Seconds below the crash speed before a crash registers";
@@ -147,7 +147,7 @@ extension Run {
     }
 
     function GetCrashSpeedThreshold() {
-        threshold = Main.FlyThreshold - Main.CrashHysteresis;
+        threshold = Main.FlyThreshold - Main.CrashMargin;
 
         if (threshold < 0.0) {
             threshold = 0.0;
@@ -567,8 +567,8 @@ extension Utils {
             Main.FlyThreshold = 0.0;
         }
 
-        if (Main.CrashHysteresis < 0.0) {
-            Main.CrashHysteresis = 0.0;
+        if (Main.CrashMargin < 0.0) {
+            Main.CrashMargin = 0.0;
         }
 
         if (Main.CrashGraceTime < 0.0) {
