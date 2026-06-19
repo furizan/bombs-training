@@ -20,7 +20,7 @@ class Main {
     InfiniteGasTooltip = "Keeps gas full during the run";
 
     Heatmap = true;
-    HeatmapTooltip = "Write map data to PersistentData/bombs_heatmap.txt for optional density and crash map images";
+    HeatmapTooltip = "Write map data to PersistentData/bombs_training.txt for optional density and crash map images";
 
     UiPrimaryColor = "white";
     UiPrimaryColorTooltip = "Color name (e.g. red) or HEX color code (e.g. #ff0000). Invalid colors show as white";
@@ -321,7 +321,7 @@ extension Run {
 }
 
 extension Heatmap {
-    _exportFile = "bombs_heatmap";
+    _exportFile = "bombs_training";
     _gridSize = 96;
     _minX = -648.0;
     _maxX = 648.0;
@@ -476,7 +476,7 @@ extension Heatmap {
         PersistentData.SetProperty("crashes", String.Join(self._crashPoints, ";"));
         PersistentData.SaveToFile(self._exportFile, false);
 
-        Game.Print("Map data saved to PersistentData/bombs_heatmap.txt");
+        Game.Print("Map data saved to PersistentData/bombs_training.txt");
     }
 }
 

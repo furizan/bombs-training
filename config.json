@@ -14,7 +14,7 @@
   "treeOutputImage": "treemap.png",
   "treeDotRadius": 3,
   "sourceMap": "../CustomMap/BombsTrainingMap.txt",
-  "persistentDataFile": "../PersistentData/bombs_heatmap.txt",
+  "persistentDataFile": "../PersistentData/bombs_training.txt",
   "blurSigma": 1.5,
   "pathDotRadius": 2.5,
   "startMarkerRadius": 6,
