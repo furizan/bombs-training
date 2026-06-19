@@ -229,9 +229,9 @@ Scene,Interact/CaptureZone2,229,0,1,0,1,1,CaptureZone2,0,0,0,0,0,0,141.3,30,141.
 {
     "Skybox" : "Day1",
     "SkyboxColor" : [
-        125,
-        125,
-        125,
+        45,
+        66,
+        99,
         255
     ],
     "Daylight" : [
@@ -258,7 +258,7 @@ Scene,Interact/CaptureZone2,229,0,1,0,1,1,CaptureZone2,0,0,0,0,0,0,141.3,30,141.
         255,
         0
     ],
-    "FogDensity" : 0.00800000037997961,
+    "FogDensity" : 0,
     "FogColor" : [
         157,
         178,
