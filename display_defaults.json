@@ -9,6 +9,7 @@
   "pathLineAlpha": 200,
   "pathDirectionEvery": 10,
   "crashMarkerRadius": 8,
+  "crashMarkerAlpha": 180,
   "blurSigma": 1.5,
   "gamma": 0.7,
   "minDensity": 0.06

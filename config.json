@@ -23,6 +23,7 @@
   "pathDirectionEvery": 10,
   "pathArrowLength": 8.0,
   "crashMarkerRadius": 8.0,
+  "crashMarkerAlpha": 180,
   "gamma": 0.7,
   "minDensity": 0.06,
   "showLegend": true,

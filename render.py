@@ -740,6 +740,41 @@ def draw_labeled_circle(
     )
 
 
+def draw_transparent_marker(
+    overlay: Image.Image,
+    x: float,
+    y: float,
+    radius: int,
+    fill: tuple[int, int, int, int],
+    label: str | None = None,
+) -> None:
+    """Draw a marker with real alpha blending (Pillow ellipses need fill/outline split)."""
+    pad = 4
+    size = radius * 2 + pad * 2
+    stamp = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    stamp_draw = ImageDraw.Draw(stamp)
+    cx, cy = size // 2, size // 2
+    bbox = [cx - radius, cy - radius, cx + radius, cy + radius]
+
+    stamp_draw.ellipse(bbox, fill=fill)
+    outline_alpha = min(255, fill[3])
+    if outline_alpha > 0:
+        stamp_draw.ellipse(bbox, outline=(255, 255, 255, outline_alpha), width=2)
+
+    if label:
+        text_fill, text_stroke = contrast_text_for_fill(fill)
+        stamp_draw.text(
+            (cx, cy),
+            label,
+            fill=text_fill,
+            anchor="mm",
+            stroke_width=2,
+            stroke_fill=text_stroke,
+        )
+
+    overlay.alpha_composite(stamp, (int(round(x)) - cx, int(round(y)) - cy))
+
+
 def start_marker_color(_has_crashes: bool) -> tuple[int, int, int, int]:
     return crash_color(1)
 
@@ -954,9 +989,11 @@ def render_crashmap(config: dict, export: dict, map_path: Path, out_path: Path) 
         )
 
     crash_radius = int(config.get("crashMarkerRadius", 8))
+    crash_alpha = int(config.get("crashMarkerAlpha", 180))
 
     for index, (px, py) in enumerate(crash_pixels_raw, start=1):
-        draw_labeled_circle(draw, px, py, crash_radius, crash_color(index), str(index))
+        fill = with_alpha(crash_color(index), crash_alpha)
+        draw_transparent_marker(overlay, px, py, crash_radius, fill, str(index))
 
     if config.get("showLandmarks", False):
         draw_landmarks(
