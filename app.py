@@ -50,7 +50,6 @@ FLOAT_SETTINGS = (
     ("pathLineWidth", "Path line width", 1.0, 8.0, 0.5, 1),
     ("pathArrowLength", "Arrow length", 3.0, 24.0, 1.0, 0),
     ("crashMarkerRadius", "Crash marker size", 3.0, 24.0, 1.0, 0),
-    ("crashMarkerSpread", "Crash spread", 0.0, 30.0, 1.0, 0),
     ("blurSigma", "Heatmap blur", 0.0, 5.0, 0.1, 1),
     ("gamma", "Heatmap gamma", 0.1, 2.0, 0.05, 2),
     ("minDensity", "Heatmap min density", 0.0, 1.0, 0.01, 2),
@@ -72,7 +71,6 @@ CRASH_MAP_SLIDER_ORDER = (
     "pathArrowLength",
     "pathDirectionEvery",
     "crashMarkerRadius",
-    "crashMarkerSpread",
 )
 
 HEATMAP_SLIDER_ORDER = (

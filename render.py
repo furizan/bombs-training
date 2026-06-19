@@ -704,32 +704,6 @@ def draw_path_samples(
         draw.ellipse([x - r, y - r, x + r, y + r], fill=color, outline=outline, width=1)
 
 
-def spread_marker_positions(
-    points: list[tuple[float, float]],
-    spread: float,
-) -> list[tuple[float, float]]:
-    """Fan out markers that land on top of each other."""
-    placed: list[tuple[float, float]] = []
-    min_dist = spread * 2.2
-
-    for px, py in points:
-        x, y = px, py
-        nearby = 0
-        for ox, oy in placed:
-            dx, dy = x - ox, y - oy
-            if dx * dx + dy * dy < min_dist * min_dist:
-                nearby += 1
-
-        if nearby:
-            angle = nearby * (2 * math.pi / 5)
-            x = px + spread * 2.0 * math.cos(angle)
-            y = py + spread * 2.0 * math.sin(angle)
-
-        placed.append((x, y))
-
-    return placed
-
-
 def contrast_text_for_fill(fill: tuple[int, int, int, int]) -> tuple[tuple[int, int, int, int], tuple[int, int, int, int]]:
     """Pick text and stroke colors from the marker fill luminance."""
     lum = 0.299 * fill[0] + 0.587 * fill[1] + 0.114 * fill[2]
@@ -980,10 +954,8 @@ def render_crashmap(config: dict, export: dict, map_path: Path, out_path: Path) 
         )
 
     crash_radius = int(config.get("crashMarkerRadius", 8))
-    spread = float(config.get("crashMarkerSpread", 10))
-    crash_pixels = spread_marker_positions(crash_pixels_raw, spread)
 
-    for index, (px, py) in enumerate(crash_pixels, start=1):
+    for index, (px, py) in enumerate(crash_pixels_raw, start=1):
         draw_labeled_circle(draw, px, py, crash_radius, crash_color(index), str(index))
 
     if config.get("showLandmarks", False):
