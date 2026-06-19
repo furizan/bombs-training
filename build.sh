@@ -2,22 +2,37 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-python3 -m pip install -r requirements.txt pyinstaller
+if [ -z "${VIRTUAL_ENV:-}" ]; then
+  if [ ! -d .venv ]; then
+    python3 -m venv .venv
+  fi
+  # shellcheck source=/dev/null
+  source .venv/bin/activate
+fi
 
-rm -rf build dist/release
+python -m pip install -r requirements.txt pyinstaller
+
+RELEASE="dist/Bombs-Training-linux"
+rm -rf build dist
 pyinstaller --noconfirm --clean bombs-training.spec
 
-RELEASE="dist/release/Bombs-Training-linux"
 mkdir -p "$RELEASE"
-cp dist/Bombs-Training "$RELEASE/"
+mv dist/Bombs-Training "$RELEASE/"
 chmod +x "$RELEASE/Bombs-Training"
 cp config.json map.png "$RELEASE/"
+cp USER-README.md "$RELEASE/README.md"
 cp -r pack "$RELEASE/"
 
-(
-  cd dist/release
-  rm -f ../Bombs-Training-linux.zip
-  zip -r ../Bombs-Training-linux.zip Bombs-Training-linux
-)
+python - <<'PY'
+import shutil
+from pathlib import Path
 
-echo "Built dist/Bombs-Training-linux.zip"
+folder = Path("dist/Bombs-Training-linux")
+archive = Path("dist/Bombs-Training-linux.zip")
+if archive.is_file():
+    archive.unlink()
+shutil.make_archive(str(archive.with_suffix("")), "zip", folder.parent, folder.name)
+print(archive)
+PY
+
+echo "Built $RELEASE and dist/Bombs-Training-linux.zip"

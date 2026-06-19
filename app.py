@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from install import MAP_NAME, default_aottg_root, find_aottg_root, is_installed, run_install
+from install import LOGIC_NAME, MAP_NAME, default_aottg_root, find_aottg_root, is_installed, run_install
 from render import ROOT, load_config, render_once, resolve_paths, save_config
 
 CONFIG_PATH = ROOT / "config.json"
@@ -157,7 +157,7 @@ class MainWindow(QMainWindow):
             self,
             "Install Bombs-Training",
             "Install custom logic and map into your AoTTG2 folder?\n"
-            f"(Only adds {MAP_NAME.removesuffix('.txt')} files.)",
+            f"(adds {LOGIC_NAME} and {MAP_NAME}.)",
         )
         if answer == QMessageBox.StandardButton.Yes:
             self._install_to(root)
@@ -228,7 +228,7 @@ class MainWindow(QMainWindow):
 
     def _show_current(self) -> None:
         path = self._paths[self._view]
-        self.setWindowTitle(f"Bombs-Training — {path.name}")
+        self.setWindowTitle(f"Bombs-Training - {path.name}")
         if not path.is_file():
             self._map.set_source(None, placeholder=f"Waiting for {path.name}…\nFinish a run.")
             return
