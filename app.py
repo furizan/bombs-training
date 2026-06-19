@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QAction, QClipboard, QImage, QKeySequence, QPixmap, QShortcut
+from PySide6.QtGui import QAction, QClipboard, QColor, QImage, QKeySequence, QPalette, QPixmap, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -61,6 +61,75 @@ INT_SETTINGS = (
     ("pathDirectionEvery", "Arrow every N points", 1, 50, 1),
 )
 
+_FLOAT_BY_KEY = {key: (label, min_v, max_v, step, decimals) for key, label, min_v, max_v, step, decimals in FLOAT_SETTINGS}
+_INT_BY_KEY = {key: (label, min_v, max_v, step) for key, label, min_v, max_v, step in INT_SETTINGS}
+_INT_KEYS = frozenset(_INT_BY_KEY)
+
+CRASH_MAP_SLIDER_ORDER = (
+    "pathLineWidth",
+    "pathLineAlpha",
+    "pathDotRadius",
+    "pathArrowLength",
+    "pathDirectionEvery",
+    "crashMarkerRadius",
+    "crashMarkerSpread",
+)
+
+HEATMAP_SLIDER_ORDER = (
+    "blurSigma",
+    "gamma",
+    "minDensity",
+)
+
+THEMES = ("dark", "light")
+
+
+def fusion_dark_palette() -> QPalette:
+    """Standard Qt Fusion dark palette."""
+    palette = QPalette()
+    palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
+    palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.Base, QColor(35, 35, 35))
+    palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
+    palette.setColor(QPalette.ColorRole.ToolTipBase, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.black)
+    palette.setColor(QPalette.ColorRole.Text, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
+    palette.setColor(QPalette.ColorRole.ButtonText, Qt.GlobalColor.white)
+    palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
+    palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
+    palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
+    palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.black)
+    palette.setColor(QPalette.ColorRole.PlaceholderText, QColor(127, 127, 127))
+    return palette
+
+
+def apply_ui_theme(app: QApplication, theme: str) -> None:
+    """Apply Qt's built-in dark or light styling to the whole application."""
+    scheme = Qt.ColorScheme.Dark if theme == "dark" else Qt.ColorScheme.Light
+    app.styleHints().setColorScheme(scheme)
+
+    # Fusion is Qt's cross-platform style; palette swap gives a reliable dark/light toggle.
+    if app.style().objectName().lower() != "fusion":
+        app.setStyle("Fusion")
+    if theme == "dark":
+        app.setPalette(fusion_dark_palette())
+    else:
+        app.setPalette(app.style().standardPalette())
+
+    for widget in app.allWidgets():
+        style = widget.style()
+        if style is None:
+            continue
+        style.unpolish(widget)
+        style.polish(widget)
+        widget.update()
+
+
+def load_ui_theme(config_path: Path = CONFIG_PATH) -> str:
+    theme = load_config(config_path).get("uiTheme", "dark")
+    return theme if theme in THEMES else "dark"
+
 
 def load_display_defaults() -> dict:
     return json.loads(DEFAULTS_PATH.read_text(encoding="utf-8"))
@@ -69,7 +138,7 @@ def load_display_defaults() -> dict:
 def _values_equal(key: str, current, default) -> bool:
     if isinstance(default, bool):
         return bool(current) == default
-    if isinstance(default, int) and key in {k for k, *_ in INT_SETTINGS}:
+    if isinstance(default, int) and key in _INT_KEYS:
         return int(round(float(current))) == default
     return abs(float(current) - float(default)) < 1e-6
 
@@ -171,22 +240,15 @@ class SettingsPanel(QWidget):
         for key, label in BOOL_SETTINGS:
             self._add_bool_setting(display_layout, key, label)
 
-        for key, label, min_v, max_v, step, decimals in FLOAT_SETTINGS:
-            if key in ("blurSigma", "gamma", "minDensity"):
-                continue
-            self._add_slider_setting(display_layout, key, label, min_v, max_v, step, decimals, self._float_rows)
-
-        for key, label, min_v, max_v, step in INT_SETTINGS:
-            self._add_slider_setting(display_layout, key, label, min_v, max_v, step, 0, self._int_rows)
+        for key in CRASH_MAP_SLIDER_ORDER:
+            self._add_ordered_slider_setting(display_layout, key)
 
         form.addRow(display)
 
         heatmap = QGroupBox("Heatmap")
         heatmap_layout = QVBoxLayout(heatmap)
-        for key, label, min_v, max_v, step, decimals in FLOAT_SETTINGS:
-            if key not in ("blurSigma", "gamma", "minDensity"):
-                continue
-            self._add_slider_setting(heatmap_layout, key, label, min_v, max_v, step, decimals, self._float_rows)
+        for key in HEATMAP_SLIDER_ORDER:
+            self._add_ordered_slider_setting(heatmap_layout, key)
         form.addRow(heatmap)
 
         scroll.setWidget(body)
@@ -212,6 +274,20 @@ class SettingsPanel(QWidget):
         self._reset_buttons[key] = button
         return button
 
+    def _style_reset_button(self, button: QToolButton, *, active: bool) -> None:
+        if active:
+            button.setEnabled(True)
+            button.setStyleSheet(
+                "QToolButton { color: palette(link); }"
+                "QToolButton:hover { color: palette(highlight); }"
+            )
+        else:
+            button.setEnabled(False)
+            button.setStyleSheet("QToolButton { color: palette(placeholder-text); }")
+
+    def refresh_theme(self) -> None:
+        self._update_reset_states()
+
     def _add_bool_setting(self, layout: QVBoxLayout, key: str, label: str) -> None:
         row = QHBoxLayout()
         box = QCheckBox(label)
@@ -221,6 +297,14 @@ class SettingsPanel(QWidget):
         row.addStretch()
         row.addWidget(self._make_reset_button(key))
         layout.addLayout(row)
+
+    def _add_ordered_slider_setting(self, layout: QVBoxLayout, key: str) -> None:
+        if key in _FLOAT_BY_KEY:
+            label, min_v, max_v, step, decimals = _FLOAT_BY_KEY[key]
+            self._add_slider_setting(layout, key, label, min_v, max_v, step, decimals, self._float_rows)
+            return
+        label, min_v, max_v, step = _INT_BY_KEY[key]
+        self._add_slider_setting(layout, key, label, min_v, max_v, step, 0, self._int_rows)
 
     def _add_slider_setting(
         self,
@@ -264,7 +348,8 @@ class SettingsPanel(QWidget):
     def _update_reset_states(self) -> None:
         for key, button in self._reset_buttons.items():
             default = self._defaults[key]
-            button.setEnabled(not _values_equal(key, self._current_value(key), default))
+            active = not _values_equal(key, self._current_value(key), default)
+            self._style_reset_button(button, active=active)
 
     def reload(self) -> None:
         self._loading = True
@@ -324,18 +409,29 @@ class MapLabel(QLabel):
         super().__init__(parent)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setMinimumSize(320, 240)
-        self.setStyleSheet("background: #1a1a1a; color: #aaa;")
         self._source: QPixmap | None = None
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._show_context_menu)
+        self.refresh_appearance()
+
+    def refresh_appearance(self) -> None:
+        palette = QApplication.palette()
+        bg = palette.color(QPalette.ColorRole.Base).name()
+        if self._source is None or self._source.isNull():
+            fg = palette.color(QPalette.ColorRole.PlaceholderText).name()
+            self.setStyleSheet(f"background: {bg}; color: {fg};")
+        else:
+            self.setStyleSheet(f"background: {bg};")
 
     def set_source(self, pixmap: QPixmap | None, *, placeholder: str = "") -> None:
         self._source = pixmap
         if pixmap is None or pixmap.isNull():
             self.setText(placeholder or "Waiting for a run…")
             self.setPixmap(QPixmap())
+            self.refresh_appearance()
             return
         self.setText("")
+        self.refresh_appearance()
         self._fit()
 
     def resizeEvent(self, event) -> None:
@@ -384,6 +480,7 @@ class MainWindow(QMainWindow):
         self._config_path = CONFIG_PATH
         self._view = "crash"
         self._last_mtime = 0.0
+        self._theme = "dark"
 
         self._map = MapLabel()
         scroll = QScrollArea()
@@ -416,8 +513,32 @@ class MainWindow(QMainWindow):
         self._timer.start()
 
         self._refresh_paths()
+        self._load_theme()
         self._maybe_install()
         self._show_current()
+
+    def _load_theme(self) -> None:
+        self._theme = load_ui_theme(self._config_path)
+        self._apply_theme()
+
+    def _save_theme(self) -> None:
+        config = load_config(self._config_path)
+        config["uiTheme"] = self._theme
+        save_config(self._config_path, config)
+
+    def _apply_theme(self) -> None:
+        app = QApplication.instance()
+        if isinstance(app, QApplication):
+            apply_ui_theme(app, self._theme)
+        self._map.refresh_appearance()
+        self._settings.refresh_theme()
+        if hasattr(self, "_theme_button"):
+            self._theme_button.setText("Light" if self._theme == "dark" else "Dark")
+
+    def _toggle_theme(self) -> None:
+        self._theme = "light" if self._theme == "dark" else "dark"
+        self._apply_theme()
+        self._save_theme()
 
     def _build_menu(self) -> None:
         self._settings_action = QAction("Settings", self)
@@ -427,10 +548,19 @@ class MainWindow(QMainWindow):
 
         toolbar = self.addToolBar("Main")
         toolbar.setMovable(False)
+
+        self._theme_button = QPushButton("Light")
+        self._theme_button.setToolTip("Switch between dark and light theme")
+        self._theme_button.clicked.connect(self._toggle_theme)
+        toolbar.addWidget(self._theme_button)
+
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         toolbar.addWidget(spacer)
+
+        toolbar.addSeparator()
         toolbar.addAction(self._settings_action)
+        self._apply_theme()
 
         menu = self.menuBar().addMenu("&File")
         menu.addAction("Install to AoTTG2…", self._install)
@@ -571,6 +701,7 @@ def main() -> int:
         print(f"map.png not found in {ROOT}", file=sys.stderr)
         return 1
     app = QApplication(sys.argv)
+    apply_ui_theme(app, load_ui_theme())
     window = MainWindow()
     window.show()
     return app.exec()
