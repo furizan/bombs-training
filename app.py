@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QAction, QImage, QKeySequence, QPixmap, QShortcut
+from PySide6.QtGui import QAction, QClipboard, QImage, QKeySequence, QPixmap, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QMessageBox,
+    QMenu,
     QPushButton,
     QScrollArea,
     QSizePolicy,
@@ -325,6 +326,8 @@ class MapLabel(QLabel):
         self.setMinimumSize(320, 240)
         self.setStyleSheet("background: #1a1a1a; color: #aaa;")
         self._source: QPixmap | None = None
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._show_context_menu)
 
     def set_source(self, pixmap: QPixmap | None, *, placeholder: str = "") -> None:
         self._source = pixmap
@@ -348,6 +351,28 @@ class MapLabel(QLabel):
             Qt.TransformationMode.SmoothTransformation,
         )
         self.setPixmap(scaled)
+
+    def _show_context_menu(self, pos) -> None:
+        if self._source is None or self._source.isNull():
+            return
+        menu = QMenu(self.window())
+        menu.setStyleSheet(
+            "QMenu { background: palette(window); color: palette(window-text); }"
+            "QMenu::item { padding: 4px 20px; }"
+            "QMenu::item:selected { background: palette(highlight); color: palette(highlighted-text); }"
+        )
+        copy_action = QAction("Copy", menu)
+        copy_action.triggered.connect(self._copy_image)
+        menu.addAction(copy_action)
+        menu.exec(self.mapToGlobal(pos))
+
+    def _copy_image(self) -> None:
+        if self._source is None or self._source.isNull():
+            return
+        QApplication.clipboard().setPixmap(self._source, QClipboard.Mode.Clipboard)
+        window = self.window()
+        if isinstance(window, MainWindow):
+            window.statusBar().showMessage("Copied to clipboard.", 2000)
 
 
 class MainWindow(QMainWindow):
