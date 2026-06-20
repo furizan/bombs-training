@@ -21,13 +21,16 @@ If you want bomb-mode thunderspears, turn on Thunderspear PVP under Misc when cr
 
 <img src="docs/app-example.png" width="600" alt="Bombs Training viewer showing the crash map" />
 
+**Help->Keyboard shortcuts.**
+
+<img src="docs/app-shortcuts.png" width="600" alt="Bombs Training shortcuts" />
 
 ---
 
 ## Dev
 
 ```bash
-git clone https://github.com/YOUR_GITHUB/bombs-training.git && cd bombs-training
+git clone https://github.com/furizan/bombs-training.git && cd bombs-training
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt && python app.py
 ```
