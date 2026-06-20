@@ -53,10 +53,8 @@ from version import __version__
 
 from install import (
     LOGIC_ID,
-    LOGIC_LABEL,
     LOGIC_NAME,
     MAP_ID,
-    MAP_LABEL,
     MAP_NAME,
     PRODUCT_NAME,
     is_installed,
@@ -934,7 +932,7 @@ class MainWindow(QMainWindow):
             self,
             f"Install {PRODUCT_NAME}",
             "Install custom logic and map into your AoTTG2 folder?\n"
-            f"(adds {LOGIC_LABEL} and {MAP_LABEL}.)",
+            f"(adds {LOGIC_ID} and {MAP_ID}.)",
         )
         if answer == QMessageBox.StandardButton.Yes:
             self._install_to(root)
@@ -974,7 +972,7 @@ class MainWindow(QMainWindow):
                 self,
                 "Installed",
                 detail
-                + f"\n\nIn-game: map {MAP_LABEL} ({MAP_ID}), mode {LOGIC_LABEL} ({LOGIC_ID}).",
+                + f"\n\nIn-game: choose custom map {MAP_ID}, game mode {LOGIC_ID}.",
             )
         else:
             QMessageBox.warning(self, "Install", detail)

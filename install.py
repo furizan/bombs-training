@@ -22,8 +22,6 @@ def _label(slug: str) -> str:
 PRODUCT_NAME = _label("bombs-training")
 LOGIC_ID = LOGIC_NAME.removesuffix(".cl")
 MAP_ID = MAP_NAME.removesuffix(".txt")
-LOGIC_LABEL = _label(LOGIC_ID)
-MAP_LABEL = _label(MAP_ID)
 
 
 def is_installed(aottg_root: Path) -> bool:
