@@ -49,7 +49,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from install import LOGIC_NAME, MAP_NAME, default_aottg_root, find_aottg_root, is_installed, run_install
+from install import LOGIC_NAME, MAP_NAME, is_installed, run_install
+from paths import find_aottg_root
 from render import ROOT, flatten_rgba, load_config, render_once, resolve_paths, save_config
 
 CONFIG_PATH = ROOT / "config.json"
@@ -837,13 +838,13 @@ class MainWindow(QMainWindow):
             self._status.showMessage(f"Render failed: {err}", 5000)
 
     def _refresh_paths(self) -> None:
-        self._config, self._export_path, self._map_path, self._density_out, self._crash_out = resolve_paths(
+        _, self._export_path, _, self._density_out, self._crash_out = resolve_paths(
             self._config_path
         )
         self._paths = {"heatmap": self._density_out, "crash": self._crash_out}
 
     def _maybe_install(self) -> None:
-        root = default_aottg_root()
+        root = find_aottg_root()
         if root is None or is_installed(root):
             return
         answer = QMessageBox.question(
@@ -856,7 +857,7 @@ class MainWindow(QMainWindow):
             self._install_to(root)
 
     def _pick_aottg_root(self) -> Path | None:
-        root = default_aottg_root()
+        root = find_aottg_root()
         if root is not None:
             return root
         folder = QFileDialog.getExistingDirectory(self, "Select AoTTG2 data folder")

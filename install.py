@@ -6,7 +6,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from paths import app_root, default_aottg_root, find_aottg_root
+from paths import app_root
 
 ROOT = app_root()
 PACK = ROOT / "pack"

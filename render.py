@@ -13,7 +13,6 @@ from PIL import Image, ImageDraw, ImageFilter
 from paths import app_root, resolve_config_path
 
 ROOT = app_root()
-HERE = ROOT  # paths in this package are relative to repo root
 
 
 def load_config(path: Path) -> dict:
@@ -116,102 +115,6 @@ def map_bounds(config: dict) -> dict[str, float]:
     return _bounds_from_world(config["world"])
 
 
-def alignment_bounds(config: dict) -> dict[str, float]:
-    """Bounds for treemap alignment test (imageWorld if calibrated, else world)."""
-    return _bounds_from_world(config.get("imageWorld") or config["world"])
-
-
-def calibrate_image_world(config: dict, map_img: Image.Image) -> dict[str, float]:
-    """Fit imageWorld bounds so Tree2 positions line up with tree art in map.png."""
-    content_bbox = detect_content_bbox(map_img)
-    trees = load_map_trees(config)
-    if not trees:
-        raise ValueError("Need Tree2 entries in source map")
-
-    base = config.get("imageWorld") or config["world"]
-    start_min_x = float(base.get("minX", -648.0))
-    start_max_x = float(base.get("maxX", 648.0))
-    start_min_z = float(base.get("minZ", -648.0))
-    start_max_z = float(base.get("maxZ", 648.0))
-    flip_z = bool(config.get("flipZ", True))
-    w, h = map_img.size
-    pixels = map_img.convert("RGBA").load()
-
-    best: tuple[float, float, float, float, float] | None = None
-
-    def try_bounds(min_x: float, max_x: float, min_z: float, max_z: float) -> None:
-        nonlocal best
-        if max_x - min_x < 500 or max_z - min_z < 500:
-            return
-        bounds = {"minX": min_x, "maxX": max_x, "minZ": min_z, "maxZ": max_z}
-        mean, right, left, count = _tree_match_error(
-            trees, map_img, bounds, w, h, content_bbox, flip_z, pixels=pixels
-        )
-        if count < len(trees) - 5:
-            return
-        score = mean + 0.5 * (right + left)
-        if best is None or score < best[0]:
-            best = (score, min_x, max_x, min_z, max_z)
-
-    for min_x in range(int(start_min_x - 20), int(start_min_x + 21), 4):
-        for max_x in range(int(start_max_x - 30), int(start_max_x + 31), 4):
-            for min_z in range(int(start_min_z - 20), int(start_min_z + 21), 4):
-                for max_z in range(int(start_max_z - 30), int(start_max_z + 31), 4):
-                    try_bounds(float(min_x), float(max_x), float(min_z), float(max_z))
-
-    if best is None:
-        return map_bounds(config)
-
-    _, min_x, max_x, min_z, max_z = best
-    for min_x in range(int(min_x - 6), int(min_x + 7)):
-        for max_x in range(int(max_x - 6), int(max_x + 7)):
-            for min_z in range(int(min_z - 6), int(min_z + 7)):
-                for max_z in range(int(max_z - 10), int(max_z + 11)):
-                    try_bounds(float(min_x), float(max_x), float(min_z), float(max_z))
-
-    return {
-        "minX": round(best[1], 1),
-        "maxX": round(best[2], 1),
-        "minZ": round(best[3], 1),
-        "maxZ": round(best[4], 1),
-    }
-
-
-def save_image_world(config_path: Path, image_world: dict[str, float]) -> None:
-    config = load_config(config_path)
-    config["imageWorld"] = image_world
-    config_path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
-
-
-def source_map_path(config: dict) -> Path:
-    rel = config.get("sourceMap", "../CustomMap/BombsTrainingMap.txt")
-    return resolve_config_path(rel, app_root_dir=HERE)
-
-
-def parse_map_trees(text: str) -> list[tuple[float, float]]:
-    trees: list[tuple[float, float]] = []
-    for line in text.splitlines():
-        if not line.startswith("Scene,"):
-            continue
-        parts = line.strip().rstrip(";").split(",")
-        if len(parts) < 12:
-            continue
-        if parts[8] != "Tree2":
-            continue
-        try:
-            trees.append((float(parts[9]), float(parts[11])))
-        except ValueError:
-            continue
-    return trees
-
-
-def load_map_trees(config: dict) -> list[tuple[float, float]]:
-    map_file = source_map_path(config)
-    if not map_file.is_file():
-        raise FileNotFoundError(f"Map file not found: {map_file}")
-    return parse_map_trees(map_file.read_text(encoding="utf-8", errors="replace"))
-
-
 def detect_content_bbox(map_img: Image.Image) -> tuple[int, int, int, int]:
     """Return pixel bounds of the green play area (excludes black border on map.png)."""
     pixels = map_img.convert("RGBA").load()
@@ -230,109 +133,6 @@ def detect_content_bbox(map_img: Image.Image) -> tuple[int, int, int, int]:
         max(p[0] for p in green),
         max(p[1] for p in green),
     )
-
-
-def local_tree_center(
-    map_img: Image.Image,
-    px: float,
-    py: float,
-    content_bbox: tuple[int, int, int, int],
-    radius: float = 22.0,
-    pixels=None,
-) -> tuple[float, float] | None:
-    """Centroid of nearby tree-shadow pixels in map.png (used for alignment scoring)."""
-    if pixels is None:
-        pixels = map_img.convert("RGBA").load()
-    left, top, right, bottom = content_bbox
-    ix, iy = int(round(px)), int(round(py))
-    r2 = radius * radius
-    sx = sy = n = 0.0
-    ri = int(radius)
-    for y in range(max(top, iy - ri), min(bottom, iy + ri) + 1):
-        for x in range(max(left, ix - ri), min(right, ix + ri) + 1):
-            if (x - px) ** 2 + (y - py) ** 2 > r2:
-                continue
-            r, g, b, _a = pixels[x, y]
-            if r < 50 and g < 60 and b < 40:
-                sx += x
-                sy += y
-                n += 1
-    if n < 3:
-        return None
-    return sx / n, sy / n
-
-
-def detect_tree_peaks(map_img: Image.Image, content_bbox: tuple[int, int, int, int]) -> list[tuple[float, float]]:
-    """Local maxima on dark tree pixels in map.png."""
-    pixels = map_img.convert("RGBA").load()
-    left, top, right, bottom = content_bbox
-    peaks: list[tuple[float, float]] = []
-    for y in range(top + 2, bottom - 2):
-        for x in range(left + 2, right - 2):
-            r, g, b, _a = pixels[x, y]
-            if not (r < 45 and g < 55 and b < 35):
-                continue
-            if all(
-                pixels[x + dx, y + dy][1] >= g
-                for dy in range(-3, 4)
-                for dx in range(-3, 4)
-                if dx or dy
-            ):
-                peaks.append((float(x), float(y)))
-    return peaks
-
-
-def detect_gear_pixel(map_img: Image.Image) -> tuple[float, float] | None:
-    """Find the supply gear icon baked into map.png (bottom-center white pixels)."""
-    w, h = map_img.size
-    pixels = map_img.convert("RGBA").load()
-    bright: list[tuple[int, int]] = []
-    for y in range(max(0, h - 120), h):
-        for x in range(max(0, w // 2 - 80), min(w, w // 2 + 80)):
-            r, g, b, _a = pixels[x, y]
-            if r > 200 and g > 200 and b > 200:
-                bright.append((x, y))
-    if not bright:
-        return None
-    cx = sum(p[0] for p in bright) / len(bright)
-    cy = sum(p[1] for p in bright) / len(bright)
-    return cx, cy
-
-
-def draw_landmarks(
-    draw: ImageDraw.ImageDraw,
-    config: dict,
-    bounds: dict[str, float],
-    width: int,
-    height: int,
-    flip_z: bool,
-    map_img: Image.Image | None = None,
-    content_bbox: tuple[int, int, int, int] | None = None,
-) -> None:
-    landmarks = config.get("landmarks", {})
-    gear = detect_gear_pixel(map_img) if map_img is not None else None
-    for name, coords in landmarks.items():
-        if not isinstance(coords, list) or len(coords) < 2:
-            continue
-        if name == "supply" and gear is not None:
-            px, py = gear
-        else:
-            px, py = world_to_pixel(
-                float(coords[0]),
-                float(coords[1]),
-                bounds,
-                width,
-                height,
-                flip_z,
-                content_bbox=content_bbox,
-            )
-        r = 5
-        draw.ellipse(
-            [px - r, py - r, px + r, py + r],
-            outline=(255, 255, 0, 230),
-            width=2,
-        )
-        draw.text((px + 7, py - 6), name, fill=(255, 255, 0, 230))
 
 
 def world_to_pixel(
@@ -376,66 +176,6 @@ def points_to_pixels(
         world_to_pixel(x, z, bounds, width, height, flip_z, content_bbox)
         for x, z in points
     ]
-
-
-def _tree_match_error(
-    trees: list[tuple[float, float]],
-    map_img: Image.Image,
-    bounds: dict[str, float],
-    width: int,
-    height: int,
-    content_bbox: tuple[int, int, int, int],
-    flip_z: bool,
-    pixels=None,
-) -> tuple[float, float, float, int]:
-    """Return mean, left-side, right-side match error (px) to nearby tree art."""
-    if pixels is None:
-        pixels = map_img.convert("RGBA").load()
-    errors: list[float] = []
-    right: list[float] = []
-    left: list[float] = []
-
-    for wx, wz in trees:
-        px, py = world_to_pixel(wx, wz, bounds, width, height, flip_z, content_bbox)
-        center = local_tree_center(map_img, px, py, content_bbox, pixels=pixels)
-        if center is None:
-            continue
-        err = math.hypot(center[0] - px, center[1] - py)
-        errors.append(err)
-        if wx > 200:
-            right.append(err)
-        elif wx < -200:
-            left.append(err)
-
-    def mean(values: list[float]) -> float:
-        return sum(values) / len(values) if values else 999.0
-
-    return mean(errors), mean(left), mean(right), len(errors)
-
-
-def _tree_median_error(
-    trees: list[tuple[float, float]],
-    map_img: Image.Image,
-    bounds: dict[str, float],
-    content_bbox: tuple[int, int, int, int],
-    flip_z: bool,
-) -> float:
-    errors: list[float] = []
-    w, h = map_img.size
-    pixels = map_img.convert("RGBA").load()
-    for wx, wz in trees:
-        px, py = world_to_pixel(wx, wz, bounds, w, h, flip_z, content_bbox)
-        center = local_tree_center(map_img, px, py, content_bbox, pixels=pixels)
-        if center is None:
-            continue
-        errors.append(math.hypot(center[0] - px, center[1] - py))
-    if not errors:
-        return 0.0
-    errors.sort()
-    mid = len(errors) // 2
-    if len(errors) % 2:
-        return errors[mid]
-    return (errors[mid - 1] + errors[mid]) / 2
 
 
 def grid_max(grid: list[list[float]]) -> float:
@@ -1027,18 +767,6 @@ def render_crashmap(config: dict, export: dict, map_path: Path, out_path: Path) 
         fill = with_alpha(crash_color(index), crash_alpha)
         draw_transparent_marker(overlay, px, py, crash_radius, fill, str(index))
 
-    if config.get("showLandmarks", False):
-        draw_landmarks(
-            draw,
-            config,
-            pixel_bounds,
-            base.width,
-            base.height,
-            flip_z,
-            base,
-            content_bbox,
-        )
-
     result = Image.alpha_composite(base, overlay)
 
     if config.get("showLegend", True):
@@ -1050,53 +778,6 @@ def render_crashmap(config: dict, export: dict, map_path: Path, out_path: Path) 
 
     print(f"Wrote {out_path} ({len(path)} path points, {len(crashes)} crashes)")
     return len(path), len(crashes)
-
-
-def render_treemap(config: dict, map_path: Path, out_path: Path) -> int:
-    """Overlay Tree2 positions from bomb map.txt to verify world-to-pixel alignment."""
-    pixel_bounds = alignment_bounds(config)
-    flip_z = bool(config.get("flipZ", True))
-    trees = load_map_trees(config)
-    dot_radius = float(config.get("treeDotRadius", 3))
-    color = config.get("treeDotColor", [255, 220, 0, 230])
-    dot_color = (int(color[0]), int(color[1]), int(color[2]), int(color[3]))
-
-    base = Image.open(map_path).convert("RGBA")
-    content_bbox = detect_content_bbox(base)
-    overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay)
-
-    pixels = points_to_pixels(trees, pixel_bounds, base.width, base.height, flip_z, content_bbox)
-    outline = (255, 255, 255, 180)
-    for px, py in pixels:
-        draw.ellipse(
-            [px - dot_radius, py - dot_radius, px + dot_radius, py + dot_radius],
-            fill=dot_color,
-            outline=outline,
-            width=1,
-        )
-
-    result = Image.alpha_composite(base, overlay)
-    save_image(out_path, result)
-
-    mean, right, left, count = _tree_match_error(
-        trees,
-        base,
-        pixel_bounds,
-        base.width,
-        base.height,
-        content_bbox,
-        flip_z,
-    )
-    if count:
-        print(
-            f"Wrote {out_path} ({len(trees)} trees, {count} matched, "
-            f"err avg {mean:.1f}px med {_tree_median_error(trees, base, pixel_bounds, content_bbox, flip_z):.1f}px "
-            f"L {left:.1f} R {right:.1f})"
-        )
-    else:
-        print(f"Wrote {out_path} ({len(trees)} trees, no tree art matched nearby)")
-    return len(trees)
 
 
 def render_all(

@@ -1,7 +1,6 @@
 # Rendered outputs
 heatmap.png
 crashmap.png
-treemap.png
 
 __pycache__/
 .pytest_cache/

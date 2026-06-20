@@ -102,10 +102,6 @@ def find_aottg_root(start: Path | None = None) -> Path | None:
     return _find_aottg_root_impl(start)
 
 
-def default_aottg_root() -> Path | None:
-    return find_aottg_root()
-
-
 def resolve_config_path(
     value: str | Path,
     *,
