@@ -6,35 +6,13 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from paths import app_root
+from paths import app_root, default_aottg_root, find_aottg_root
 
 ROOT = app_root()
 PACK = ROOT / "pack"
 
 LOGIC_NAME = "BombsTrainingLogic.cl"
 MAP_NAME = "BombsTrainingMap.txt"
-
-
-def find_aottg_root(start: Path | None = None) -> Path | None:
-    candidates = [start, ROOT, Path.cwd()] if start is None else [start, ROOT, Path.cwd()]
-    seen: set[Path] = set()
-    for base in candidates:
-        if base is None:
-            continue
-        base = base.resolve()
-        for candidate in (base, base.parent):
-            if candidate in seen:
-                continue
-            seen.add(candidate)
-            if (candidate / "CustomLogic").is_dir() and (candidate / "CustomMap").is_dir():
-                return candidate
-    return None
-
-
-def default_aottg_root() -> Path | None:
-    if (ROOT.parent / "CustomLogic").is_dir() and (ROOT.parent / "CustomMap").is_dir():
-        return ROOT.parent.resolve()
-    return find_aottg_root()
 
 
 def is_installed(aottg_root: Path) -> bool:

@@ -1,13 +1,11 @@
 # Bombs-Training
 
-1. Unzip this folder into your **AoTTG2** data folder (the same place as `CustomLogic` and `CustomMap`).
+1. Unzip anywhere and run **Bombs-Training.exe** (keep all files in the folder).
 
-2. Run **Bombs-Training** (double-click, or `Bombs-Training.exe` on Windows).
+2. **File -> Install to AoTTG2** (first time only).
 
-3. In the app: **File -> Install to AoTTG2**.
+3. In-game: custom map **BombsTrainingMap**, game mode **BombsTrainingLogic**.
 
-4. In-game: load custom map **BombsTrainingMap**, game mode **BombsTrainingLogic**.
+4. Leave the app open - maps update when a run ends.
 
-5. Leave the app open. When a run ends, your crash map updates automatically.
-
-**Space** switches between crash map and heatmap.
+**Space** switches crash map and heatmap.

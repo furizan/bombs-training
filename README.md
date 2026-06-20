@@ -2,9 +2,9 @@
 
 ## Players
 
-Download the release, unzip into your AoTTG2 folder, run `Bombs-Training` (or `Bombs-Training.exe` on Windows).
+Unzip anywhere and run **Bombs-Training.exe**. Game data is read from `Documents/Aottg2` automatically.
 
-**File -> Install to AoTTG2** -> in-game load custom map **BombsTrainingMap**, game mode **BombsTrainingLogic**.
+**File -> Install to AoTTG2** -> in-game **BombsTrainingMap** / **BombsTrainingLogic**.
 
 ## Developers
 
@@ -23,8 +23,8 @@ Updates: `git pull` then **File -> Install to AoTTG2** if pack files changed.
 ## Build
 
 ```bash
-./build.sh    # Linux
 build.bat     # Windows
+./build.sh    # Linux
 ```
 
-Output: `dist/Bombs-Training-linux/` and `dist/Bombs-Training-linux.zip` (or `-windows` on Windows).
+Output: `dist/Bombs-Training-windows/` and `dist/Bombs-Training-windows.zip` (or `-linux` on Linux).

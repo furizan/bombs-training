@@ -10,7 +10,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter
 
-from paths import app_root
+from paths import app_root, resolve_config_path
 
 ROOT = app_root()
 HERE = ROOT  # paths in this package are relative to repo root
@@ -28,10 +28,14 @@ def save_config(path: Path, config: dict) -> None:
 def resolve_paths(config_path: Path | None = None) -> tuple[dict, Path, Path, Path, Path]:
     config_path = config_path or ROOT / "config.json"
     config = load_config(config_path)
-    export_path = (ROOT / config["persistentDataFile"]).resolve()
-    map_path = ROOT / config["mapImage"]
-    density_out = ROOT / config["outputImage"]
-    crash_out = ROOT / config.get("crashOutputImage", "crashmap.png")
+    export_path = resolve_config_path(config["persistentDataFile"], app_root_dir=ROOT)
+    map_path = resolve_config_path(config["mapImage"], app_root_dir=ROOT, prefer_app=True)
+    density_out = resolve_config_path(config["outputImage"], app_root_dir=ROOT, prefer_app=True)
+    crash_out = resolve_config_path(
+        config.get("crashOutputImage", "crashmap.png"),
+        app_root_dir=ROOT,
+        prefer_app=True,
+    )
     return config, export_path, map_path, density_out, crash_out
 
 
@@ -181,10 +185,7 @@ def save_image_world(config_path: Path, image_world: dict[str, float]) -> None:
 
 def source_map_path(config: dict) -> Path:
     rel = config.get("sourceMap", "../CustomMap/BombsTrainingMap.txt")
-    path = Path(rel)
-    if path.is_absolute():
-        return path
-    return (HERE / rel).resolve()
+    return resolve_config_path(rel, app_root_dir=HERE)
 
 
 def parse_map_trees(text: str) -> list[tuple[float, float]]:

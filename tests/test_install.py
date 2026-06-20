@@ -8,30 +8,10 @@ from install import (
     LOGIC_NAME,
     MAP_NAME,
     PACK,
-    find_aottg_root,
     install_file,
     is_installed,
     run_install,
 )
-
-
-def test_find_aottg_root_from_custom_logic_child(aottg_root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    import install
-
-    monkeypatch.setattr(install, "ROOT", Path("/nonexistent/bombs-training"))
-    monkeypatch.chdir(aottg_root)
-    sub = aottg_root / "CustomLogic"
-    assert find_aottg_root(sub) == aottg_root.resolve()
-
-
-def test_find_aottg_root_returns_none_when_missing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    import install
-
-    isolated = tmp_path / "isolated"
-    isolated.mkdir()
-    monkeypatch.setattr(install, "ROOT", isolated / "app")
-    monkeypatch.chdir(isolated)
-    assert find_aottg_root(isolated) is None
 
 
 def test_is_installed_false_until_logic_present(aottg_root: Path) -> None:
