@@ -22,6 +22,9 @@ class Main {
     Heatmap = true;
     HeatmapTooltip = "Write map data to PersistentData/bombs_training.txt for optional density and crash map images";
 
+    SkipFirstSeconds = 5.0;
+    SkipFirstSecondsTooltip = "Seconds after run start before path and heatmap sampling begins";
+
     UiPrimaryColor = "white";
     UiPrimaryColorTooltip = "Color name (e.g. red) or HEX color code (e.g. #ff0000). Invalid colors show as white";
 
@@ -328,7 +331,6 @@ extension Heatmap {
     _minZ = -648.0;
     _maxZ = 648.0;
     _sampleInterval = 0.2;
-    _skipSeconds = 5.0;
     _lastSampleTime = 0.0;
     _cells = Dict();
     _pathPoints = List();
@@ -358,7 +360,7 @@ extension Heatmap {
             return;
         }
 
-        if (Run.GetElapsedTime() < self._skipSeconds) {
+        if (Run.GetElapsedTime() < Main.SkipFirstSeconds) {
             return;
         }
 
@@ -581,6 +583,10 @@ extension Utils {
 
         if (Main.MinFlightTime < 0.0) {
             Main.MinFlightTime = 0.0;
+        }
+
+        if (Main.SkipFirstSeconds < 0.0) {
+            Main.SkipFirstSeconds = 0.0;
         }
     }
 
