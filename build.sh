@@ -12,6 +12,8 @@ fi
 
 python -m pip install -r requirements.txt pyinstaller
 
+python scripts/write_version.py
+
 RELEASE="dist/Bombs-Training-linux"
 rm -rf build dist
 pyinstaller --noconfirm --clean bombs-training.spec

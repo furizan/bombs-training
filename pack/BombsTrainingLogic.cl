@@ -514,7 +514,7 @@ extension CustomUI {
         hudText =
             "<color=" + Main.UiPrimaryColor + ">" +
             "<size=20>" + Convert.ToString(crashes) + " crashes" +
-            " · <color=" + Main.UiAccentColor + ">" + String.FormatFloat(sinceCrash, 0) + "s</color>" +
+            " - <color=" + Main.UiAccentColor + ">" + String.FormatFloat(sinceCrash, 0) + "s</color>" +
             " since crash</size></color>";
 
         UI.SetLabelAll("TopLeft", hudText);

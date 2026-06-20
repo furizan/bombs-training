@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bombs-Training viewer — Qt app for all platforms."""
+"""Bombs-Training viewer - Qt app for all platforms."""
 
 from __future__ import annotations
 
@@ -49,12 +49,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from version import __version__
+
 from install import LOGIC_NAME, MAP_NAME, is_installed, run_install
 from paths import find_aottg_root
 from render import ROOT, flatten_rgba, load_config, render_once, resolve_paths, save_config
 
 CONFIG_PATH = ROOT / "config.json"
 DEFAULTS_PATH = ROOT / "display_defaults.json"
+APP_TITLE = f"Bombs-Training v{__version__}"
 
 BOOL_SETTINGS = (
     ("showPathLines", "Lines"),
@@ -102,14 +105,14 @@ SETTING_TOOLTIPS = {
     "showPathDots": "Draw a dot at each recorded sample point",
     "showLegend": "Show the key strip below the map",
     "pathLineWidth": "Path line thickness in pixels",
-    "pathLineAlpha": "Path line transparency (0–255)",
+    "pathLineAlpha": "Path line transparency (0-255)",
     "pathDotRadius": "Sample dot radius in pixels",
-    "pathDotAlpha": "Sample dot transparency (0–255)",
+    "pathDotAlpha": "Sample dot transparency (0-255)",
     "pathArrowLength": "Direction arrow length in pixels",
-    "pathArrowAlpha": "Direction arrow transparency (0–255)",
+    "pathArrowAlpha": "Direction arrow transparency (0-255)",
     "pathDirectionEvery": "Draw an arrow every N sample points",
     "crashMarkerRadius": "Crash marker radius in pixels",
-    "crashMarkerAlpha": "Crash marker transparency (0–255)",
+    "crashMarkerAlpha": "Crash marker transparency (0-255)",
     "blurSigma": "Gaussian blur applied to the heatmap",
     "gamma": "Contrast curve for density values",
     "minDensity": "Hide cells below this normalized density",
@@ -156,7 +159,7 @@ def fusion_dark_palette() -> QPalette:
 
 
 def chrome_colors_for_theme(theme: str) -> tuple[QColor, QColor]:
-    """Viewer letterbox colors — derived from theme, not widget palette (avoids stale/inverted roles)."""
+    """Viewer letterbox colors from theme, not widget palette."""
     if theme == "dark":
         palette = fusion_dark_palette()
     else:
@@ -211,7 +214,7 @@ def _values_equal(key: str, current, default) -> bool:
 
 
 class SliderSpinRow(QWidget):
-    """One setting: label, slider, value, optional reset — single row."""
+    """One setting: label, slider, value, optional reset."""
 
     _LABEL_WIDTH = 58
     _SPIN_WIDTH = 52
@@ -679,7 +682,7 @@ class MapView(QGraphicsView):
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("Bombs-Training")
+        self.setWindowTitle(APP_TITLE)
         self.resize(1100, 720)
 
         self._config_path = CONFIG_PATH
@@ -709,6 +712,7 @@ class MainWindow(QMainWindow):
 
         self._status = QStatusBar()
         self.setStatusBar(self._status)
+        self._status.addPermanentWidget(QLabel(f"v{__version__}"))
 
         self._build_menu()
         QShortcut(QKeySequence(Qt.Key.Key_Space), self, self._toggle_view)
@@ -802,6 +806,17 @@ class MainWindow(QMainWindow):
         self._heatmap_action = QAction("Show &heatmap", self)
         self._heatmap_action.triggered.connect(lambda: self._set_view("heatmap"))
         view_menu.addAction(self._heatmap_action)
+
+        help_menu = self.menuBar().addMenu("&Help")
+        help_menu.addAction("About Bombs-Training", self._show_about)
+
+    def _show_about(self) -> None:
+        QMessageBox.about(
+            self,
+            "About Bombs-Training",
+            f"<b>Bombs-Training</b> {__version__}<br><br>"
+            "Crash map and heatmap viewer for AoTTG2 Bombs Training.",
+        )
 
     def _on_splitter_moved(self, _pos: int, _index: int) -> None:
         sizes = self._splitter.sizes()
@@ -908,7 +923,7 @@ class MainWindow(QMainWindow):
 
     def _show_current(self) -> None:
         path = self._paths[self._view]
-        self.setWindowTitle(f"Bombs-Training - {path.name}")
+        self.setWindowTitle(f"{APP_TITLE} - {path.name}")
         if not path.is_file():
             self._map.set_source(None, placeholder=f"Waiting for {path.name}…\nFinish a run.")
             return

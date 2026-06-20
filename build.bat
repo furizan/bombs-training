@@ -12,6 +12,9 @@ if not defined VIRTUAL_ENV (
 python -m pip install -r requirements.txt pyinstaller
 if errorlevel 1 exit /b 1
 
+python scripts\write_version.py
+if errorlevel 1 exit /b 1
+
 set RELEASE=dist\Bombs-Training-windows
 if exist build rmdir /s /q build
 if exist dist rmdir /s /q dist
