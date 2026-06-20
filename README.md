@@ -1,30 +1,23 @@
 # Bombs-Training
 
-## Players
+## Usage
 
-Unzip anywhere and run **Bombs-Training.exe**. Game data is read from `Documents/Aottg2` automatically.
+1. Download **Bombs-Training-windows.zip** from [Releases](../../releases).
+2. Unzip anywhere, run **Bombs-Training.exe**.
+3. **File -> Install to AoTTG2**
+4. In-game: choose map **BombsTrainingMap**, game mode **BombsTrainingLogic**
+5. Leave the app open. Maps update when a run ends.
 
-**File -> Install to AoTTG2** -> in-game **BombsTrainingMap** / **BombsTrainingLogic**.
+![screenshot](docs/screenshot.png)
 
-## Developers
+---
 
-```bash
-cd /path/to/Aottg2
-git clone <this-repo-url> bombs-training
-cd bombs-training
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python app.py
-```
-
-Updates: `git pull` then **File -> Install to AoTTG2** if pack files changed.
-
-## Build
+## Dev
 
 ```bash
-build.bat     # Windows
-./build.sh    # Linux
+git clone https://github.com/YOUR_GITHUB/bombs-training.git && cd bombs-training
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt && python app.py
 ```
 
-Output: `dist/Bombs-Training-windows/` and `dist/Bombs-Training-windows.zip` (or `-linux` on Linux).
+Tests: `pytest`. Release: `git tag v0.1.0 && git push origin v0.1.0`
