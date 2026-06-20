@@ -154,6 +154,19 @@ def fusion_dark_palette() -> QPalette:
     return palette
 
 
+def chrome_colors_for_theme(theme: str) -> tuple[QColor, QColor]:
+    """Viewer letterbox colors — derived from theme, not widget palette (avoids stale/inverted roles)."""
+    if theme == "dark":
+        palette = fusion_dark_palette()
+    else:
+        app = QApplication.instance()
+        palette = app.style().standardPalette() if isinstance(app, QApplication) else QPalette()
+    return (
+        palette.color(QPalette.ColorRole.Window),
+        palette.color(QPalette.ColorRole.PlaceholderText),
+    )
+
+
 def apply_ui_theme(app: QApplication, theme: str) -> None:
     """Apply Qt's built-in dark or light styling to the whole application."""
     scheme = Qt.ColorScheme.Dark if theme == "dark" else Qt.ColorScheme.Light
@@ -169,7 +182,7 @@ def apply_ui_theme(app: QApplication, theme: str) -> None:
 
     for widget in app.allWidgets():
         if isinstance(widget, MapView):
-            widget.refresh_appearance()
+            widget.refresh_appearance(theme)
             continue
         style = widget.style()
         if style is None:
@@ -533,16 +546,23 @@ class MapView(QGraphicsView):
         self.setMinimumSize(320, 240)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._show_context_menu)
-        self.refresh_appearance()
 
     def has_image(self) -> bool:
         return self._source is not None and not self._source.isNull()
 
-    def refresh_appearance(self) -> None:
-        base = self.palette().color(QPalette.ColorRole.Base)
-        self.setBackgroundBrush(QBrush(base))
-        color = self.palette().color(QPalette.ColorRole.PlaceholderText)
-        self._placeholder.setDefaultTextColor(color)
+    def refresh_appearance(self, theme: str = "dark") -> None:
+        bg, placeholder = chrome_colors_for_theme(theme)
+        self.setBackgroundBrush(QBrush(bg))
+        self._scene.setBackgroundBrush(QBrush(bg))
+        self._placeholder.setDefaultTextColor(placeholder)
+
+        viewport = self.viewport()
+        viewport.setAutoFillBackground(True)
+        vp_palette = viewport.palette()
+        vp_palette.setColor(QPalette.ColorRole.Window, bg)
+        vp_palette.setColor(QPalette.ColorRole.Base, bg)
+        viewport.setPalette(vp_palette)
+        viewport.update()
 
     def set_source(self, pixmap: QPixmap | None, *, placeholder: str = "") -> None:
         self._source = pixmap
@@ -714,7 +734,8 @@ class MainWindow(QMainWindow):
         app = QApplication.instance()
         if isinstance(app, QApplication):
             apply_ui_theme(app, self._theme)
-        self._map.refresh_appearance()
+        else:
+            self._map.refresh_appearance(self._theme)
         self._settings.refresh_theme()
         if hasattr(self, "_theme_button"):
             self._theme_button.setText("Light" if self._theme == "dark" else "Dark")
