@@ -8,6 +8,8 @@
 4. In-game: choose custom map **bombs-training-map**, game mode **bombs-training-logic**
 5. Leave the app open. Maps update when a run ends.
 
+For bomb-mode thunderspears, turn on Thunderspear PVP under Misc when creating the room.
+
 ![screenshot](docs/screenshot.png)
 
 ---
