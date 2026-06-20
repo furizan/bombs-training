@@ -827,7 +827,26 @@ class MainWindow(QMainWindow):
         view_menu.addAction(self._heatmap_action)
 
         help_menu = self.menuBar().addMenu("&Help")
+        help_menu.addAction("Keyboard shortcuts", self._show_shortcuts)
+        help_menu.addSeparator()
         help_menu.addAction(f"About {PRODUCT_NAME}", self._show_about)
+
+    def _show_shortcuts(self) -> None:
+        QMessageBox.information(
+            self,
+            "Keyboard shortcuts",
+            "<b>View</b><br>"
+            "Space - Toggle crash map / heatmap<br>"
+            "F11 - Focus mode (map only)<br>"
+            "Esc - Exit focus mode<br><br>"
+            "<b>Map</b><br>"
+            "Ctrl+0 - Fit to window<br>"
+            "Ctrl+= / Ctrl+- - Zoom in / out<br>"
+            "Mouse wheel - Zoom<br>"
+            "Double-click - Fit to window<br>"
+            "Drag - Pan<br><br>"
+            "Right-click map - Fit, actual size, copy image",
+        )
 
     def _show_about(self) -> None:
         QMessageBox.about(
