@@ -689,7 +689,8 @@ class MainWindow(QMainWindow):
         self._map = MapView()
 
         self._settings = SettingsPanel(self)
-        self._settings.setMinimumWidth(300)
+        self._settings.setMinimumWidth(320)
+        self._settings_width = 360
         self._settings.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -697,6 +698,9 @@ class MainWindow(QMainWindow):
         splitter.addWidget(self._settings)
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 0)
+        splitter.setCollapsible(0, False)
+        splitter.setCollapsible(1, False)
+        splitter.splitterMoved.connect(self._on_splitter_moved)
         self._splitter = splitter
         self.setCentralWidget(splitter)
 
@@ -800,11 +804,27 @@ class MainWindow(QMainWindow):
         self._heatmap_action.triggered.connect(lambda: self._set_view("heatmap"))
         view_menu.addAction(self._heatmap_action)
 
+    def _on_splitter_moved(self, _pos: int, _index: int) -> None:
+        sizes = self._splitter.sizes()
+        if len(sizes) >= 2 and sizes[1] > 0:
+            self._settings_width = sizes[1]
+
+    def _apply_settings_splitter_sizes(self) -> None:
+        width = max(self._splitter.width(), 1)
+        settings_w = max(self._settings_width, self._settings.minimumWidth())
+        map_w = max(width - settings_w, 400)
+        self._splitter.setSizes([map_w, settings_w])
+
     def _toggle_settings(self, visible: bool) -> None:
-        self._settings.setVisible(visible)
-        if visible:
-            width = max(self._splitter.width(), 1)
-            self._splitter.setSizes([max(width - 300, 400), 300])
+        if not visible:
+            sizes = self._splitter.sizes()
+            if len(sizes) >= 2 and sizes[1] > 0:
+                self._settings_width = sizes[1]
+            self._settings.setVisible(False)
+            return
+
+        self._settings.setVisible(True)
+        QTimer.singleShot(0, self._apply_settings_splitter_sizes)
 
     def on_settings_applied(self) -> None:
         self._refresh_paths()
