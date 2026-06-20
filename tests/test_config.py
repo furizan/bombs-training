@@ -4,9 +4,10 @@ import json
 from pathlib import Path
 
 from display_settings import BOOL_SETTINGS, FLOAT_SETTINGS, INT_SETTINGS
-from render import ROOT, load_config
+from paths import assets_dir
+from render import load_config
 
-DISPLAY_DEFAULTS_PATH = ROOT / "display_defaults.json"
+DISPLAY_DEFAULTS_PATH = assets_dir() / "display_defaults.json"
 
 
 def test_display_defaults_keys_match_settings_panel() -> None:
@@ -18,7 +19,7 @@ def test_display_defaults_keys_match_settings_panel() -> None:
 
 
 def test_config_json_has_renderer_fields() -> None:
-    config = load_config(ROOT / "config.json")
+    config = load_config(assets_dir() / "config.json")
     required = (
         "world",
         "mapImage",

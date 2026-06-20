@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from paths import assets_dir
 from render import ROOT, load_config, load_persistent_export
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
@@ -18,7 +19,7 @@ def minimal_export() -> dict[str, object]:
 
 @pytest.fixture
 def base_config() -> dict:
-    return load_config(ROOT / "config.json")
+    return load_config(assets_dir() / "config.json")
 
 
 @pytest.fixture

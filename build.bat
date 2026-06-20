@@ -25,11 +25,8 @@ if errorlevel 1 exit /b 1
 
 mkdir "%STAGING%"
 move /y dist\bombs-training.exe "%STAGING%\"
-copy /y config.json "%STAGING%\"
-copy /y display_defaults.json "%STAGING%\"
-copy /y map.png "%STAGING%\"
-copy /y user-readme.md "%STAGING%\README.md"
-xcopy /e /i /y pack "%STAGING%\pack"
+xcopy /e /i /y assets "%STAGING%\assets"
+copy /y docs\user-readme.md "%STAGING%\README.md"
 
 mkdir dist
 powershell -NoProfile -Command "Compress-Archive -Path 'build/bombs-training-windows' -DestinationPath 'dist/bombs-training-windows.zip' -Force"

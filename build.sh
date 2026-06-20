@@ -23,9 +23,8 @@ pyinstaller --noconfirm --clean bombs-training.spec
 mkdir -p "$STAGING"
 mv dist/bombs-training "$STAGING/"
 chmod +x "$STAGING/bombs-training"
-cp config.json display_defaults.json map.png "$STAGING/"
-cp user-readme.md "$STAGING/README.md"
-cp -r pack "$STAGING/"
+cp -r assets "$STAGING/"
+cp docs/user-readme.md "$STAGING/README.md"
 
 python - <<'PY'
 import shutil

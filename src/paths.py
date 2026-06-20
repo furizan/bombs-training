@@ -16,6 +16,10 @@ def app_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+def assets_dir() -> Path:
+    return app_root() / "assets"
+
+
 def is_aottg_root(path: Path) -> bool:
     return (path / "CustomLogic").is_dir() and (path / "CustomMap").is_dir()
 
@@ -110,7 +114,7 @@ def resolve_config_path(
 ) -> Path:
     """Resolve a config path.
 
-    Bundled assets (prefer_app) stay next to the executable.
+    Bundled assets (prefer_app) resolve under assets/ next to the executable.
     Game data paths (../PersistentData/..., ../CustomMap/...) resolve under the
     AoTTG2 data folder, checked at the standard install location first.
     """

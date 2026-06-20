@@ -60,7 +60,7 @@ from install import (
     is_installed,
     run_install,
 )
-from paths import find_aottg_root
+from paths import assets_dir, find_aottg_root
 from display_settings import (
     BOOL_SETTINGS,
     CRASH_MAP_SECTIONS,
@@ -73,10 +73,10 @@ from display_settings import (
     _INT_BY_KEY,
     _INT_KEYS,
 )
-from render import ROOT, flatten_rgba, load_config, render_once, resolve_paths, save_config
+from render import flatten_rgba, load_config, render_once, resolve_paths, save_config
 
-CONFIG_PATH = ROOT / "config.json"
-DEFAULTS_PATH = ROOT / "display_defaults.json"
+CONFIG_PATH = assets_dir() / "config.json"
+DEFAULTS_PATH = assets_dir() / "display_defaults.json"
 
 THEMES = ("dark", "light")
 
@@ -948,8 +948,8 @@ class MainWindow(QMainWindow):
 
 
 def main() -> int:
-    if not (ROOT / "map.png").is_file():
-        print(f"map.png not found in {ROOT}", file=sys.stderr)
+    if not (assets_dir() / "map.png").is_file():
+        print(f"map.png not found in {assets_dir()}", file=sys.stderr)
         return 1
     app = QApplication(sys.argv)
     apply_ui_theme(app, load_ui_theme())

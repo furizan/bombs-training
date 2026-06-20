@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
-# Shared PyInstaller spec — used by build.sh and build.bat
+# Shared PyInstaller spec. Used by build.sh and build.bat
 
-# Unused Qt modules — PySide6 one-file builds are large; drop what this app never imports.
+# Unused Qt modules. PySide6 one-file builds are large; drop what this app never imports.
 _QT_EXCLUDES = [
     "PySide6.Qt3DAnimation",
     "PySide6.Qt3DCore",

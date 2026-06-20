@@ -10,9 +10,10 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter
 
-from paths import app_root, resolve_config_path
+from paths import app_root, assets_dir, resolve_config_path
 
 ROOT = app_root()
+ASSETS = assets_dir()
 
 
 def load_config(path: Path) -> dict:
@@ -25,10 +26,10 @@ def save_config(path: Path, config: dict) -> None:
 
 
 def resolve_paths(config_path: Path | None = None) -> tuple[dict, Path, Path, Path, Path]:
-    config_path = config_path or ROOT / "config.json"
+    config_path = config_path or ASSETS / "config.json"
     config = load_config(config_path)
     export_path = resolve_config_path(config["persistentDataFile"], app_root_dir=ROOT)
-    map_path = resolve_config_path(config["mapImage"], app_root_dir=ROOT, prefer_app=True)
+    map_path = resolve_config_path(config["mapImage"], app_root_dir=ASSETS, prefer_app=True)
     density_out = resolve_config_path(config["outputImage"], app_root_dir=ROOT, prefer_app=True)
     crash_out = resolve_config_path(
         config.get("crashOutputImage", "crashmap.png"),

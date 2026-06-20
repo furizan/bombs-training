@@ -6,10 +6,9 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from paths import app_root
+from paths import assets_dir
 
-ROOT = app_root()
-PACK = ROOT / "pack"
+PACK = assets_dir() / "pack"
 
 LOGIC_NAME = "bombs-training-logic.cl"
 MAP_NAME = "bombs-training-map.txt"
