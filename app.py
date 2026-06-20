@@ -8,12 +8,29 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QAction, QClipboard, QColor, QImage, QKeySequence, QPalette, QPixmap, QShortcut
+from PySide6.QtGui import (
+    QAction,
+    QBrush,
+    QClipboard,
+    QColor,
+    QImage,
+    QKeySequence,
+    QPainter,
+    QPalette,
+    QPixmap,
+    QShortcut,
+    QWheelEvent,
+)
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QDoubleSpinBox,
     QFileDialog,
+    QFrame,
+    QGraphicsPixmapItem,
+    QGraphicsScene,
+    QGraphicsTextItem,
+    QGraphicsView,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
@@ -151,8 +168,8 @@ def apply_ui_theme(app: QApplication, theme: str) -> None:
         app.setPalette(app.style().standardPalette())
 
     for widget in app.allWidgets():
-        if isinstance(widget, MapLabel) and widget.has_image():
-            widget.update()
+        if isinstance(widget, MapView):
+            widget.refresh_appearance()
             continue
         style = widget.style()
         if style is None:
@@ -486,14 +503,34 @@ class SettingsPanel(QWidget):
             window.on_settings_applied()
 
 
-class MapLabel(QLabel):
+class MapView(QGraphicsView):
+    """Zoomable, pannable map viewer."""
+
+    _ZOOM_STEP = 1.15
+    _MAX_SCALE = 12.0
+
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.setMinimumSize(320, 240)
-        self.setAutoFillBackground(True)
-        self.setBackgroundRole(QPalette.ColorRole.Base)
+        self._scene = QGraphicsScene(self)
+        self.setScene(self._scene)
+        self._item = QGraphicsPixmapItem()
+        self._scene.addItem(self._item)
+        self._placeholder = QGraphicsTextItem()
+        self._placeholder.setZValue(1)
+        self._scene.addItem(self._placeholder)
+
         self._source: QPixmap | None = None
+        self._fit_scale = 1.0
+        self._user_zoomed = False
+
+        self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+        self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+        self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+        self.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        self.setMinimumSize(320, 240)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._show_context_menu)
         self.refresh_appearance()
@@ -502,50 +539,111 @@ class MapLabel(QLabel):
         return self._source is not None and not self._source.isNull()
 
     def refresh_appearance(self) -> None:
-        if not self.has_image():
-            self.setForegroundRole(QPalette.ColorRole.PlaceholderText)
-            return
-        self.setForegroundRole(QPalette.ColorRole.WindowText)
-        self.setStyleSheet("")
-        self._fit()
+        base = self.palette().color(QPalette.ColorRole.Base)
+        self.setBackgroundBrush(QBrush(base))
+        color = self.palette().color(QPalette.ColorRole.PlaceholderText)
+        self._placeholder.setDefaultTextColor(color)
 
     def set_source(self, pixmap: QPixmap | None, *, placeholder: str = "") -> None:
         self._source = pixmap
+        self._user_zoomed = False
         if pixmap is None or pixmap.isNull():
-            self.setText(placeholder or "Waiting for a run…")
-            self.setPixmap(QPixmap())
-            self.refresh_appearance()
+            self._item.setPixmap(QPixmap())
+            self._placeholder.setPlainText(placeholder or "Waiting for a run…")
+            self._placeholder.setVisible(True)
+            self.resetTransform()
+            self._layout_placeholder()
             return
-        self.setText("")
-        self.refresh_appearance()
-        self._fit()
+
+        self._placeholder.setVisible(False)
+        self._item.setPixmap(pixmap)
+        self._scene.setSceneRect(self._item.boundingRect())
+        self.fit_in_view()
+
+    def fit_in_view(self) -> None:
+        if not self.has_image():
+            return
+        self._user_zoomed = False
+        self.resetTransform()
+        self.fitInView(self._item, Qt.AspectRatioMode.KeepAspectRatio)
+        self._fit_scale = self.transform().m11()
+
+    def actual_size(self) -> None:
+        if not self.has_image():
+            return
+        self._user_zoomed = True
+        self.resetTransform()
+        self.centerOn(self._item)
+
+    def zoom_by(self, factor: float) -> None:
+        if not self.has_image():
+            return
+        current = self.transform().m11()
+        target = current * factor
+        min_scale = self._fit_scale * 0.5
+        if target < min_scale or target > self._MAX_SCALE:
+            return
+        self._user_zoomed = True
+        self.scale(factor, factor)
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
-        self._fit()
-
-    def _fit(self) -> None:
-        if self._source is None or self._source.isNull():
+        if not self.has_image():
+            self._layout_placeholder()
             return
-        scaled = self._source.scaled(
-            self.size(),
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
+        if not self._user_zoomed:
+            self.fit_in_view()
+
+    def wheelEvent(self, event: QWheelEvent) -> None:
+        if not self.has_image():
+            event.ignore()
+            return
+        delta = event.angleDelta().y()
+        if delta == 0:
+            event.ignore()
+            return
+        factor = self._ZOOM_STEP if delta > 0 else 1 / self._ZOOM_STEP
+        self.zoom_by(factor)
+        event.accept()
+
+    def mouseDoubleClickEvent(self, event) -> None:
+        if self.has_image():
+            self.fit_in_view()
+            event.accept()
+            return
+        super().mouseDoubleClickEvent(event)
+
+    def _layout_placeholder(self) -> None:
+        width = max(self.viewport().width(), 320)
+        height = max(self.viewport().height(), 240)
+        self._scene.setSceneRect(0, 0, width, height)
+        text_rect = self._placeholder.boundingRect()
+        self._placeholder.setPos(
+            (width - text_rect.width()) / 2,
+            (height - text_rect.height()) / 2,
         )
-        self.setPixmap(scaled)
 
     def _show_context_menu(self, pos) -> None:
-        if self._source is None or self._source.isNull():
-            return
         menu = QMenu(self.window())
         menu.setStyleSheet(
             "QMenu { background: palette(window); color: palette(window-text); }"
             "QMenu::item { padding: 4px 20px; }"
             "QMenu::item:selected { background: palette(highlight); color: palette(highlighted-text); }"
         )
-        copy_action = QAction("Copy", menu)
-        copy_action.triggered.connect(self._copy_image)
-        menu.addAction(copy_action)
+        if self.has_image():
+            fit_action = QAction("Fit to window", menu)
+            fit_action.triggered.connect(self.fit_in_view)
+            menu.addAction(fit_action)
+
+            actual_action = QAction("Actual size (100%)", menu)
+            actual_action.triggered.connect(self.actual_size)
+            menu.addAction(actual_action)
+
+            menu.addSeparator()
+
+            copy_action = QAction("Copy image", menu)
+            copy_action.triggered.connect(self._copy_image)
+            menu.addAction(copy_action)
         menu.exec(self.mapToGlobal(pos))
 
     def _copy_image(self) -> None:
@@ -568,19 +666,14 @@ class MainWindow(QMainWindow):
         self._last_mtime = 0.0
         self._theme = "dark"
 
-        self._map = MapLabel()
-        self._map_scroll = QScrollArea()
-        self._map_scroll.setWidgetResizable(True)
-        self._map_scroll.setWidget(self._map)
-        self._map_scroll.setAutoFillBackground(True)
-        self._map_scroll.setBackgroundRole(QPalette.ColorRole.Base)
+        self._map = MapView()
 
         self._settings = SettingsPanel(self)
         self._settings.setMinimumWidth(300)
         self._settings.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(self._map_scroll)
+        splitter.addWidget(self._map)
         splitter.addWidget(self._settings)
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 0)
@@ -594,6 +687,9 @@ class MainWindow(QMainWindow):
 
         self._build_menu()
         QShortcut(QKeySequence(Qt.Key.Key_Space), self, self._toggle_view)
+        QShortcut(QKeySequence("Ctrl+="), self, lambda: self._map.zoom_by(MapView._ZOOM_STEP))
+        QShortcut(QKeySequence("Ctrl+-"), self, lambda: self._map.zoom_by(1 / MapView._ZOOM_STEP))
+        QShortcut(QKeySequence("Ctrl+0"), self, self._map.fit_in_view)
 
         self._timer = QTimer(self)
         self._timer.setInterval(1000)
@@ -662,6 +758,18 @@ class MainWindow(QMainWindow):
         self._toggle_view_action = QAction("Toggle map\tSpace", self)
         self._toggle_view_action.triggered.connect(self._toggle_view)
         view_menu.addAction(self._toggle_view_action)
+
+        view_menu.addSeparator()
+
+        fit_action = QAction("Fit to window\tCtrl+0", self)
+        fit_action.triggered.connect(self._map.fit_in_view)
+        view_menu.addAction(fit_action)
+
+        actual_action = QAction("Actual size (100%)", self)
+        actual_action.triggered.connect(self._map.actual_size)
+        view_menu.addAction(actual_action)
+
+        view_menu.addSeparator()
 
         self._crash_action = QAction("Show &crash map", self)
         self._crash_action.triggered.connect(lambda: self._set_view("crash"))
