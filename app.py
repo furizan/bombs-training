@@ -698,6 +698,8 @@ class MainWindow(QMainWindow):
         self._view = "crash"
         self._last_mtime = 0.0
         self._theme = "dark"
+        self._focus_mode = False
+        self._settings_visible_before_focus = False
 
         self._map = MapView()
 
@@ -728,6 +730,8 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("Ctrl+="), self, lambda: self._map.zoom_by(MapView._ZOOM_STEP))
         QShortcut(QKeySequence("Ctrl+-"), self, lambda: self._map.zoom_by(1 / MapView._ZOOM_STEP))
         QShortcut(QKeySequence("Ctrl+0"), self, self._map.fit_in_view)
+        QShortcut(QKeySequence(Qt.Key.Key_F11), self, self._toggle_focus_mode)
+        QShortcut(QKeySequence(Qt.Key.Key_Escape), self, self._exit_focus_mode)
 
         self._timer = QTimer(self)
         self._timer.setInterval(1000)
@@ -769,20 +773,20 @@ class MainWindow(QMainWindow):
         self._settings_action.setChecked(False)
         self._settings_action.triggered.connect(self._toggle_settings)
 
-        toolbar = self.addToolBar("Main")
-        toolbar.setMovable(False)
+        self._toolbar = self.addToolBar("Main")
+        self._toolbar.setMovable(False)
 
         self._theme_button = QPushButton("Light")
         self._theme_button.setToolTip("Switch between dark and light theme")
         self._theme_button.clicked.connect(self._toggle_theme)
-        toolbar.addWidget(self._theme_button)
+        self._toolbar.addWidget(self._theme_button)
 
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        toolbar.addWidget(spacer)
+        self._toolbar.addWidget(spacer)
 
-        toolbar.addSeparator()
-        toolbar.addAction(self._settings_action)
+        self._toolbar.addSeparator()
+        self._toolbar.addAction(self._settings_action)
         self._apply_theme()
 
         menu = self.menuBar().addMenu("&File")
@@ -791,6 +795,12 @@ class MainWindow(QMainWindow):
         menu.addAction("E&xit", self.close)
 
         view_menu = self.menuBar().addMenu("&View")
+        self._focus_action = QAction("Focus mode\tF11", self)
+        self._focus_action.setCheckable(True)
+        self._focus_action.setToolTip("Show only the map. Press Esc to exit.")
+        self._focus_action.triggered.connect(self._set_focus_mode)
+        view_menu.addAction(self._focus_action)
+        view_menu.addSeparator()
         view_menu.addAction(self._settings_action)
         view_menu.addSeparator()
 
@@ -826,6 +836,36 @@ class MainWindow(QMainWindow):
             f"<b>{PRODUCT_NAME}</b> {__version__}<br><br>"
             "Crash map and heatmap viewer for AoTTG2 Bombs Training.",
         )
+
+    def _toggle_focus_mode(self) -> None:
+        self._set_focus_mode(not self._focus_mode)
+
+    def _exit_focus_mode(self) -> None:
+        if self._focus_mode:
+            self._set_focus_mode(False)
+
+    def _set_focus_mode(self, enabled: bool) -> None:
+        if enabled == self._focus_mode:
+            return
+        self._focus_mode = enabled
+        if enabled:
+            self._settings_visible_before_focus = self._settings.isVisible()
+            if self._settings_visible_before_focus:
+                self._toggle_settings(False)
+                self._settings_action.setChecked(False)
+            self.menuBar().hide()
+            self._toolbar.hide()
+            self.statusBar().hide()
+        else:
+            self.menuBar().show()
+            self._toolbar.show()
+            self.statusBar().show()
+            if self._settings_visible_before_focus:
+                self._toggle_settings(True)
+                self._settings_action.setChecked(True)
+        self._focus_action.blockSignals(True)
+        self._focus_action.setChecked(enabled)
+        self._focus_action.blockSignals(False)
 
     def _on_splitter_moved(self, _pos: int, _index: int) -> None:
         sizes = self._splitter.sizes()
