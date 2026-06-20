@@ -7,7 +7,7 @@ class Main {
     FlyThreshold = 100.0;
     FlyThresholdTooltip = "Speed required to start a flight segment";
 
-    CrashMargin = 10.0;
+    CrashMargin = 5.0;
     CrashMarginTooltip = "Speed buffer so tiny dips don't instantly count as crashing";
 
     CrashGraceTime = 0.25;
