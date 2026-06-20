@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from app import BOOL_SETTINGS, FLOAT_SETTINGS, INT_SETTINGS
+from display_settings import BOOL_SETTINGS, FLOAT_SETTINGS, INT_SETTINGS
 from render import ROOT, load_config
 
 DISPLAY_DEFAULTS_PATH = ROOT / "display_defaults.json"
