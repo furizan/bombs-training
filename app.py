@@ -67,7 +67,6 @@ from render import ROOT, flatten_rgba, load_config, render_once, resolve_paths, 
 
 CONFIG_PATH = ROOT / "config.json"
 DEFAULTS_PATH = ROOT / "display_defaults.json"
-APP_TITLE = f"{PRODUCT_NAME} v{__version__}"
 
 BOOL_SETTINGS = (
     ("showPathLines", "Lines"),
@@ -692,7 +691,7 @@ class MapView(QGraphicsView):
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle(APP_TITLE)
+        self.setWindowTitle(PRODUCT_NAME)
         self.resize(1100, 720)
 
         self._config_path = CONFIG_PATH
@@ -932,7 +931,6 @@ class MainWindow(QMainWindow):
 
     def _show_current(self) -> None:
         path = self._paths[self._view]
-        self.setWindowTitle(f"{APP_TITLE} - {path.name}")
         if not path.is_file():
             self._map.set_source(None, placeholder=f"Waiting for {path.name}…\nFinish a run.")
             return
