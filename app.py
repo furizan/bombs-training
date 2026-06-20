@@ -780,12 +780,6 @@ class MainWindow(QMainWindow):
         view_menu.addAction(self._settings_action)
         view_menu.addSeparator()
 
-        self._toggle_view_action = QAction("Toggle map\tSpace", self)
-        self._toggle_view_action.triggered.connect(self._toggle_view)
-        view_menu.addAction(self._toggle_view_action)
-
-        view_menu.addSeparator()
-
         fit_action = QAction("Fit to window\tCtrl+0", self)
         fit_action.triggered.connect(self._map.fit_in_view)
         view_menu.addAction(fit_action)
@@ -795,6 +789,10 @@ class MainWindow(QMainWindow):
         view_menu.addAction(actual_action)
 
         view_menu.addSeparator()
+
+        self._toggle_view_action = QAction("Toggle map\tSpace", self)
+        self._toggle_view_action.triggered.connect(self._toggle_view)
+        view_menu.addAction(self._toggle_view_action)
 
         self._crash_action = QAction("Show &crash map", self)
         self._crash_action.triggered.connect(lambda: self._set_view("crash"))
