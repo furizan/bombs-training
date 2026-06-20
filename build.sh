@@ -14,27 +14,32 @@ python -m pip install -r requirements.txt pyinstaller
 
 python scripts/write_version.py
 
-RELEASE="dist/bombs-training-linux"
+STAGING="build/bombs-training-linux"
+ZIP="dist/bombs-training-linux.zip"
+
 rm -rf build dist
 pyinstaller --noconfirm --clean bombs-training.spec
 
-mkdir -p "$RELEASE"
-mv dist/bombs-training "$RELEASE/"
-chmod +x "$RELEASE/bombs-training"
-cp config.json display_defaults.json map.png "$RELEASE/"
-cp user-readme.md "$RELEASE/README.md"
-cp -r pack "$RELEASE/"
+mkdir -p "$STAGING"
+mv dist/bombs-training "$STAGING/"
+chmod +x "$STAGING/bombs-training"
+cp config.json display_defaults.json map.png "$STAGING/"
+cp user-readme.md "$STAGING/README.md"
+cp -r pack "$STAGING/"
 
 python - <<'PY'
 import shutil
 from pathlib import Path
 
-folder = Path("dist/bombs-training-linux")
+folder = Path("build/bombs-training-linux")
 archive = Path("dist/bombs-training-linux.zip")
+archive.parent.mkdir(parents=True, exist_ok=True)
 if archive.is_file():
     archive.unlink()
 shutil.make_archive(str(archive.with_suffix("")), "zip", folder.parent, folder.name)
 print(archive)
 PY
 
-echo "Built $RELEASE and dist/bombs-training-linux.zip"
+rm -rf "$STAGING"
+
+echo "Built $ZIP"
