@@ -60,7 +60,7 @@ from install import (
     is_installed,
     run_install,
 )
-from paths import assets_dir, find_aottg_root
+from paths import assets_dir, find_aottg_root, format_display_path, get_ui_theme, is_aottg_root, set_aottg_root_override, set_ui_theme
 from display_settings import (
     BOOL_SETTINGS,
     CRASH_MAP_SECTIONS,
@@ -139,8 +139,8 @@ def apply_ui_theme(app: QApplication, theme: str) -> None:
         widget.update()
 
 
-def load_ui_theme(config_path: Path = CONFIG_PATH) -> str:
-    theme = load_config(config_path).get("uiTheme", "dark")
+def load_ui_theme() -> str:
+    theme = get_ui_theme() or "dark"
     return theme if theme in THEMES else "dark"
 
 
@@ -619,7 +619,7 @@ class MapView(QGraphicsView):
         QApplication.clipboard().setPixmap(self._source, QClipboard.Mode.Clipboard)
         window = self.window()
         if isinstance(window, MainWindow):
-            window.statusBar().showMessage("Copied to clipboard.", 2000)
+            window.flash_status("Copied to clipboard.", 2000)
 
 
 class MainWindow(QMainWindow):
@@ -657,7 +657,16 @@ class MainWindow(QMainWindow):
 
         self._status = QStatusBar()
         self.setStatusBar(self._status)
+        self._path_label = QLabel()
+        self._path_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self._status.addWidget(self._path_label, 1)
+        self._activity_label = QLabel()
+        self._status.addPermanentWidget(self._activity_label)
         self._status.addPermanentWidget(QLabel(f"v{__version__}"))
+        self._status_path_key: tuple[str, bool] | None = None
+        self._activity_timer = QTimer(self)
+        self._activity_timer.setSingleShot(True)
+        self._activity_timer.timeout.connect(self._activity_label.clear)
 
         self._build_menu()
         QShortcut(QKeySequence(Qt.Key.Key_Space), self, self._toggle_view)
@@ -678,13 +687,11 @@ class MainWindow(QMainWindow):
         self._show_current()
 
     def _load_theme(self) -> None:
-        self._theme = load_ui_theme(self._config_path)
+        self._theme = load_ui_theme()
         self._apply_theme()
 
     def _save_theme(self) -> None:
-        config = load_config(self._config_path)
-        config["uiTheme"] = self._theme
-        save_config(self._config_path, config)
+        set_ui_theme(self._theme)
 
     def _apply_theme(self) -> None:
         app = QApplication.instance()
@@ -725,6 +732,7 @@ class MainWindow(QMainWindow):
 
         menu = self.menuBar().addMenu("&File")
         menu.addAction("Install to AoTTG2…", self._install)
+        menu.addAction("Set AoTTG2 data folder…", self._set_aottg_data_folder)
         menu.addSeparator()
         menu.addAction("E&xit", self.close)
 
@@ -781,6 +789,20 @@ class MainWindow(QMainWindow):
             "Drag - Pan<br><br>"
             "Right-click map - Fit, actual size, copy image",
         )
+
+    def flash_status(self, message: str, ms: int = 3000) -> None:
+        self._activity_label.setText(message)
+        self._activity_timer.start(ms)
+
+    def _update_status_path(self) -> None:
+        path_text = format_display_path(self._export_path)
+        exists = self._export_path.is_file()
+        key = (path_text, exists)
+        if key == self._status_path_key:
+            return
+        self._status_path_key = key
+        self._path_label.setText(path_text if exists else f"{path_text} (waiting)")
+        self._path_label.setToolTip(str(self._export_path))
 
     def _show_about(self) -> None:
         QMessageBox.about(
@@ -845,20 +867,22 @@ class MainWindow(QMainWindow):
     def on_settings_applied(self) -> None:
         self._refresh_paths()
         if not self._export_path.is_file():
-            self._status.showMessage("Settings saved.", 3000)
+            self.flash_status("Settings saved.", 3000)
             return
         try:
             render_once(self._config_path)
             self._show_current()
-            self._status.showMessage("Settings applied.", 3000)
+            self.flash_status("Settings applied.", 3000)
         except (json.JSONDecodeError, OSError, ValueError) as err:
-            self._status.showMessage(f"Render failed: {err}", 5000)
+            self.flash_status(f"Render failed: {err}", 5000)
 
     def _refresh_paths(self) -> None:
         _, self._export_path, _, self._density_out, self._crash_out = resolve_paths(
             self._config_path
         )
         self._paths = {"heatmap": self._density_out, "crash": self._crash_out}
+        self._status_path_key = None
+        self._update_status_path()
 
     def _maybe_install(self) -> None:
         root = find_aottg_root()
@@ -873,18 +897,40 @@ class MainWindow(QMainWindow):
         if answer == QMessageBox.StandardButton.Yes:
             self._install_to(root)
 
+    def _browse_aottg_root(self) -> Path | None:
+        folder = QFileDialog.getExistingDirectory(
+            self,
+            "AoTTG2 data folder (must contain CustomLogic + CustomMap)",
+        )
+        if not folder:
+            return None
+        path = Path(folder)
+        if not is_aottg_root(path):
+            QMessageBox.warning(
+                self,
+                "Invalid folder",
+                "That folder must contain CustomLogic and CustomMap.",
+            )
+            return None
+        return path.resolve()
+
     def _pick_aottg_root(self) -> Path | None:
         root = find_aottg_root()
         if root is not None:
             return root
-        folder = QFileDialog.getExistingDirectory(self, "Select AoTTG2 data folder")
-        if not folder:
-            return None
-        path = Path(folder)
-        if not find_aottg_root(path):
-            QMessageBox.warning(self, "Invalid folder", "That folder needs CustomLogic and CustomMap.")
-            return None
-        return find_aottg_root(path)
+        return self._browse_aottg_root()
+
+    def _apply_aottg_root(self, root: Path) -> None:
+        set_aottg_root_override(root)
+        self._last_mtime = 0.0
+        self._refresh_paths()
+        self._show_current()
+
+    def _set_aottg_data_folder(self) -> None:
+        root = self._browse_aottg_root()
+        if root is None:
+            return
+        self._apply_aottg_root(root)
 
     def _install(self) -> None:
         root = self._pick_aottg_root()
@@ -904,6 +950,7 @@ class MainWindow(QMainWindow):
         ok, messages = run_install(root, replace=replace)
         detail = "\n".join(messages)
         if ok:
+            self._apply_aottg_root(root)
             QMessageBox.information(
                 self,
                 "Installed",
@@ -933,7 +980,7 @@ class MainWindow(QMainWindow):
 
     def _poll_export(self) -> None:
         if not self._export_path.is_file():
-            self._status.showMessage("Waiting for PersistentData export…")
+            self._update_status_path()
             return
         mtime = self._export_path.stat().st_mtime
         if mtime <= self._last_mtime:
@@ -942,9 +989,10 @@ class MainWindow(QMainWindow):
         try:
             if render_once(self._config_path):
                 self._show_current()
-                self._status.showMessage(f"Updated {self._paths[self._view].name}", 5000)
+                self._update_status_path()
+                self.flash_status(f"Updated {self._paths[self._view].name}")
         except (json.JSONDecodeError, OSError, ValueError) as err:
-            self._status.showMessage(f"Skipped incomplete export: {err}", 5000)
+            self.flash_status(f"Skipped incomplete export: {err}", 5000)
 
 
 def main() -> int:

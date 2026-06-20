@@ -9,15 +9,114 @@ from paths import find_aottg_root, resolve_config_path, standard_aottg_roots
 
 
 @pytest.fixture(autouse=True)
-def _clear_aottg_cache() -> None:
+def _clear_aottg_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(paths, "user_settings_path", lambda: tmp_path / "user-settings.json")
     paths._find_default_aottg_root.cache_clear()
     yield
     paths._find_default_aottg_root.cache_clear()
 
 
+def test_format_display_path_uses_tilde_under_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    target = home / ".local" / "share" / "Aottg2" / "PersistentData" / "bombs-training.txt"
+    target.parent.mkdir(parents=True)
+    target.touch()
+    assert paths.format_display_path(target) == "~/.local/share/Aottg2/PersistentData/bombs-training.txt"
+
+
+def test_format_display_path_redacts_windows_user_segment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(paths.sys, "platform", "win32")
+    path = Path("C:/Users/Someone/Documents/Aottg2/PersistentData/bombs-training.txt")
+    assert (
+        paths.format_display_path(path)
+        == "C:\\Users\\%USERNAME%\\Documents\\Aottg2\\PersistentData\\bombs-training.txt"
+    )
+
+
+def test_format_display_path_uses_userprofile_under_home_on_windows(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(paths.sys, "platform", "win32")
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    target = home / "Documents" / "Aottg2" / "PersistentData" / "bombs-training.txt"
+    target.parent.mkdir(parents=True)
+    target.touch()
+    assert (
+        paths.format_display_path(target)
+        == "C:\\Users\\%USERNAME%\\Documents\\Aottg2\\PersistentData\\bombs-training.txt"
+    )
+
+
+def test_aottg_root_override_persists(aottg_root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(paths, "standard_aottg_roots", lambda: [])
+    monkeypatch.setattr(paths, "app_root", lambda: Path("/nonexistent/bombs-training"))
+    monkeypatch.chdir(Path("/tmp"))
+
+    paths.set_aottg_root_override(aottg_root)
+    assert paths.find_aottg_root() == aottg_root.resolve()
+
+    paths.set_aottg_root_override(None)
+    assert paths.find_aottg_root() is None
+
+
+def test_aottg_root_override_ignored_when_invalid(
+    aottg_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(paths, "standard_aottg_roots", lambda: [aottg_root])
+    paths.set_aottg_root_override(tmp_path)
+    assert paths.find_aottg_root() == aottg_root.resolve()
+
+
+def test_ui_theme_persists_in_user_settings() -> None:
+    assert paths.get_ui_theme() is None
+    paths.set_ui_theme("light")
+    assert paths.get_ui_theme() == "light"
+    paths.set_ui_theme("dark")
+    assert paths.get_ui_theme() == "dark"
+
+
 def test_standard_aottg_roots_includes_linux_default() -> None:
     roots = standard_aottg_roots()
     assert Path.home() / ".local" / "share" / "Aottg2" in roots
+
+
+def test_standard_aottg_roots_includes_onedrive_documents(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(paths.sys, "platform", "win32")
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    onedrive = home / "OneDrive - Personal"
+    onedrive.mkdir()
+    monkeypatch.setenv("OneDrive", str(onedrive))
+
+    roots = standard_aottg_roots()
+    assert home / "Documents" / "Aottg2" in roots
+    assert onedrive / "Documents" / "Aottg2" in roots
+
+
+def test_find_aottg_root_uses_onedrive_documents(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(paths.sys, "platform", "win32")
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    onedrive = home / "OneDrive - Personal"
+    aottg = onedrive / "Documents" / "Aottg2"
+    (aottg / "CustomLogic").mkdir(parents=True)
+    (aottg / "CustomMap").mkdir()
+    monkeypatch.setenv("OneDrive", str(onedrive))
+    monkeypatch.setattr(paths, "app_root", lambda: Path("/nonexistent/bombs-training"))
+    monkeypatch.chdir(Path("/tmp"))
+    paths._find_default_aottg_root.cache_clear()
+
+    assert find_aottg_root() == aottg.resolve()
 
 
 def test_find_aottg_root_from_custom_logic_child(aottg_root: Path, monkeypatch: pytest.MonkeyPatch) -> None:

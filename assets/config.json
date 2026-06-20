@@ -28,6 +28,5 @@
   "showPathLines": true,
   "showPathArrows": true,
   "showPathDots": false,
-  "flipZ": true,
-  "uiTheme": "dark"
+  "flipZ": true
 }
