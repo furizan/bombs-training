@@ -38,8 +38,8 @@ _QT_EXCLUDES = [
 ]
 
 a = Analysis(
-    ["app.py"],
-    pathex=[],
+    ["src/app.py"],
+    pathex=["src"],
     binaries=[],
     datas=[],
     hiddenimports=["PIL.Image", "PIL.ImageDraw", "PIL.ImageFilter"],

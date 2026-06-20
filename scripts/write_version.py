@@ -30,7 +30,7 @@ def resolve_version() -> str:
 
 def main() -> int:
     version = resolve_version()
-    (ROOT / "version.py").write_text(f'__version__ = "{version}"\n', encoding="utf-8")
+    (ROOT / "src" / "version.py").write_text(f'__version__ = "{version}"\n', encoding="utf-8")
     print(version)
     return 0
 

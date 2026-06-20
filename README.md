@@ -32,7 +32,7 @@ If you want bomb-mode thunderspears, turn on Thunderspear PVP under Misc when cr
 ```bash
 git clone https://github.com/furizan/bombs-training.git && cd bombs-training
 python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements-dev.txt && python app.py
+pip install -r requirements-dev.txt && python src/app.py
 ```
 
 Tests: `pytest`. Release: `git tag v0.1.0 && git push origin v0.1.0`

@@ -13,7 +13,7 @@ _GAME_DATA_TOP_DIRS = frozenset({"PersistentData", "CustomMap", "CustomLogic"})
 def app_root() -> Path:
     if getattr(sys, "frozen", False):
         return Path(sys.executable).resolve().parent
-    return Path(__file__).resolve().parent
+    return Path(__file__).resolve().parent.parent
 
 
 def is_aottg_root(path: Path) -> bool:
