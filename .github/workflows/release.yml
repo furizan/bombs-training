@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Build Linux release
+        env:
+          BOMBS_TRAINING_VERSION: ${{ github.ref_name }}
+        run: |
+          python -m pip install --upgrade pip
+          python -m venv .venv
+          source .venv/bin/activate
+          ./build.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Bombs-Training-linux
+          path: dist/Bombs-Training-linux.zip
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Build Windows release
+        env:
+          BOMBS_TRAINING_VERSION: ${{ github.ref_name }}
+        shell: cmd
+        run: build.bat
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Bombs-Training-windows
+          path: dist/Bombs-Training-windows.zip
+
+  release:
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist/Bombs-Training-linux.zip
+            dist/Bombs-Training-windows.zip
