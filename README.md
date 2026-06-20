@@ -1,11 +1,11 @@
-# Bombs-Training
+# Bombs Training
 
 ## Usage
 
-1. Download **Bombs-Training-windows.zip** from [Releases](../../releases).
-2. Unzip anywhere, run **Bombs-Training.exe**.
+1. Download **bombs-training-windows.zip** from [Releases](../../releases).
+2. Unzip anywhere, run **bombs-training.exe**.
 3. **File -> Install to AoTTG2**
-4. In-game: choose map **BombsTrainingMap**, game mode **BombsTrainingLogic**
+4. In-game: map **Bombs Training Map** (`bombs-training-map`), mode **Bombs Training Logic** (`bombs-training-logic`)
 5. Leave the app open. Maps update when a run ends.
 
 ![screenshot](docs/screenshot.png)

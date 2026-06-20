@@ -58,7 +58,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name="Bombs-Training",
+    name="bombs-training",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

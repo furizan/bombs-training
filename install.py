@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install Bombs-Training custom logic and map into an AoTTG2 data folder."""
+"""Install bombs-training custom logic and map into an AoTTG2 data folder."""
 
 from __future__ import annotations
 
@@ -11,8 +11,19 @@ from paths import app_root
 ROOT = app_root()
 PACK = ROOT / "pack"
 
-LOGIC_NAME = "BombsTrainingLogic.cl"
-MAP_NAME = "BombsTrainingMap.txt"
+LOGIC_NAME = "bombs-training-logic.cl"
+MAP_NAME = "bombs-training-map.txt"
+
+
+def _label(slug: str) -> str:
+    return " ".join(part.capitalize() for part in slug.split("-"))
+
+
+PRODUCT_NAME = _label("bombs-training")
+LOGIC_ID = LOGIC_NAME.removesuffix(".cl")
+MAP_ID = MAP_NAME.removesuffix(".txt")
+LOGIC_LABEL = _label(LOGIC_ID)
+MAP_LABEL = _label(MAP_ID)
 
 
 def is_installed(aottg_root: Path) -> bool:

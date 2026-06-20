@@ -20,7 +20,7 @@ class Main {
     InfiniteGasTooltip = "Keeps gas full during the run";
 
     Heatmap = true;
-    HeatmapTooltip = "Write map data to PersistentData/bombs_training.txt for optional density and crash map images";
+    HeatmapTooltip = "Write map data to PersistentData/bombs-training.txt for optional density and crash map images";
 
     SkipFirstSeconds = 5.0;
     SkipFirstSecondsTooltip = "Seconds after run start before path and heatmap sampling begins";
@@ -324,7 +324,7 @@ extension Run {
 }
 
 extension Heatmap {
-    _exportFile = "bombs_training";
+    _exportFile = "bombs-training";
     _gridSize = 96;
     _minX = -648.0;
     _maxX = 648.0;
@@ -478,7 +478,7 @@ extension Heatmap {
         PersistentData.SetProperty("crashes", String.Join(self._crashPoints, ";"));
         PersistentData.SaveToFile(self._exportFile, false);
 
-        Game.Print("Map data saved to PersistentData/bombs_training.txt");
+        Game.Print("Map data saved to PersistentData/bombs-training.txt");
     }
 }
 

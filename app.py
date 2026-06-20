@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bombs-Training viewer - Qt app for all platforms."""
+"""bombs-training viewer - Qt app for all platforms."""
 
 from __future__ import annotations
 
@@ -51,13 +51,23 @@ from PySide6.QtWidgets import (
 
 from version import __version__
 
-from install import LOGIC_NAME, MAP_NAME, is_installed, run_install
+from install import (
+    LOGIC_ID,
+    LOGIC_LABEL,
+    LOGIC_NAME,
+    MAP_ID,
+    MAP_LABEL,
+    MAP_NAME,
+    PRODUCT_NAME,
+    is_installed,
+    run_install,
+)
 from paths import find_aottg_root
 from render import ROOT, flatten_rgba, load_config, render_once, resolve_paths, save_config
 
 CONFIG_PATH = ROOT / "config.json"
 DEFAULTS_PATH = ROOT / "display_defaults.json"
-APP_TITLE = f"Bombs-Training v{__version__}"
+APP_TITLE = f"{PRODUCT_NAME} v{__version__}"
 
 BOOL_SETTINGS = (
     ("showPathLines", "Lines"),
@@ -808,13 +818,13 @@ class MainWindow(QMainWindow):
         view_menu.addAction(self._heatmap_action)
 
         help_menu = self.menuBar().addMenu("&Help")
-        help_menu.addAction("About Bombs-Training", self._show_about)
+        help_menu.addAction(f"About {PRODUCT_NAME}", self._show_about)
 
     def _show_about(self) -> None:
         QMessageBox.about(
             self,
-            "About Bombs-Training",
-            f"<b>Bombs-Training</b> {__version__}<br><br>"
+            f"About {PRODUCT_NAME}",
+            f"<b>{PRODUCT_NAME}</b> {__version__}<br><br>"
             "Crash map and heatmap viewer for AoTTG2 Bombs Training.",
         )
 
@@ -864,9 +874,9 @@ class MainWindow(QMainWindow):
             return
         answer = QMessageBox.question(
             self,
-            "Install Bombs-Training",
+            f"Install {PRODUCT_NAME}",
             "Install custom logic and map into your AoTTG2 folder?\n"
-            f"(adds {LOGIC_NAME} and {MAP_NAME}.)",
+            f"(adds {LOGIC_LABEL} and {MAP_LABEL}.)",
         )
         if answer == QMessageBox.StandardButton.Yes:
             self._install_to(root)
@@ -893,7 +903,7 @@ class MainWindow(QMainWindow):
             answer = QMessageBox.question(
                 self,
                 "Replace files?",
-                "Bombs-Training is already installed. Replace existing files?",
+                f"{PRODUCT_NAME} is already installed. Replace existing files?",
             )
             replace = answer == QMessageBox.StandardButton.Yes
         self._install_to(root, replace=replace)
@@ -906,8 +916,7 @@ class MainWindow(QMainWindow):
                 self,
                 "Installed",
                 detail
-                + "\n\nIn-game: load custom map "
-                f"{MAP_NAME.removesuffix('.txt')}, game mode {LOGIC_NAME.removesuffix('.cl')}.",
+                + f"\n\nIn-game: map {MAP_LABEL} ({MAP_ID}), mode {LOGIC_LABEL} ({LOGIC_ID}).",
             )
         else:
             QMessageBox.warning(self, "Install", detail)

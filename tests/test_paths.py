@@ -73,11 +73,11 @@ def test_resolve_config_path_prefers_aottg_over_local_copy(
 ) -> None:
     app_dir = tmp_path / "desktop-app"
     app_dir.mkdir()
-    local_export = app_dir / "PersistentData" / "bombs_training.txt"
+    local_export = app_dir / "PersistentData" / "bombs-training.txt"
     local_export.parent.mkdir(parents=True)
     local_export.write_text("local", encoding="utf-8")
 
-    real_export = aottg_root / "PersistentData" / "bombs_training.txt"
+    real_export = aottg_root / "PersistentData" / "bombs-training.txt"
     real_export.parent.mkdir(parents=True, exist_ok=True)
     real_export.write_text("real", encoding="utf-8")
 
@@ -86,7 +86,7 @@ def test_resolve_config_path_prefers_aottg_over_local_copy(
     paths._find_default_aottg_root.cache_clear()
 
     resolved = resolve_config_path(
-        "../PersistentData/bombs_training.txt",
+        "../PersistentData/bombs-training.txt",
         app_root_dir=app_dir,
     )
     assert resolved == real_export.resolve()

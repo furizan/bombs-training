@@ -10,7 +10,7 @@
   "mapImage": "map.png",
   "outputImage": "heatmap.png",
   "crashOutputImage": "crashmap.png",
-  "persistentDataFile": "../PersistentData/bombs_training.txt",
+  "persistentDataFile": "../PersistentData/bombs-training.txt",
   "blurSigma": 1.5,
   "pathDotRadius": 2.5,
   "startMarkerRadius": 6,
