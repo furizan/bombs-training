@@ -4,10 +4,14 @@
 
 1. Download **bombs-training-windows.zip** from [Releases](../../releases).
 2. Unzip anywhere, run **bombs-training.exe**.
-3. **File -> Install to AoTTG2**
+3. Press "Yes" to install cl & map.
 4. In-game: choose custom map **bombs-training-map**, game mode **bombs-training-logic**
 
 <img src="docs/select-map-mode.png" width="600" alt="Selecting the custom map and game mode in AoTTG2" />
+
+5. Leave the app open. Maps update when a run ends.
+
+---
 
 **Custom logic settings.** Run length, speed threshold, and other options in the game mode panel.
 
@@ -15,7 +19,6 @@
 
 If you want bomb-mode thunderspears, turn on Thunderspear PVP under Misc when creating the room.
 
-5. Leave the app open. Maps update when a run ends.
 
 **Viewer.**
 
